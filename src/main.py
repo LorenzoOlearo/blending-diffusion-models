@@ -91,7 +91,6 @@ def _decode_image(latent, vae):
         image = vae.decode(latent).sample
     image = (image / 2 + 0.5).clamp(0, 1).squeeze()
     image = (image.permute(1, 2, 0) * 255).to(torch.uint8).cpu().numpy()
-    images = (image * 255).round().astype("uint8")
     image = Image.fromarray(image)
     
     return image
@@ -106,7 +105,7 @@ def decode_images(latents, vae):
     return decoded_images
 
 
-def make_animation(decoded_images: list, prompt: str, save_dir: str):
+def make_animation(decoded_images: list, prompt: str, output_path: str):
     fig, ax = plt.subplots()
 
     plt.title(prompt[0])
@@ -124,14 +123,11 @@ def make_animation(decoded_images: list, prompt: str, save_dir: str):
 
     ani = animation.ArtistAnimation(fig, ims, interval=250, blit=True, repeat_delay=2000)
     
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    
-    save_path = f"{save_dir}/denoising-{prompt}.gif"
+    save_path = f"{output_path}/denoising-{prompt}.gif"
     ani.save(save_path)
     
     
-def make_plots(image_1, image_2, image_blend, prompt_1, prompt_2, save_dir="./out"):
+def make_plots(image_1, image_2, image_blend, prompt_1, prompt_2, output_path):
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
     ax[0].imshow(image_1)
     ax[0].set_title(prompt_1)
@@ -145,7 +141,7 @@ def make_plots(image_1, image_2, image_blend, prompt_1, prompt_2, save_dir="./ou
     ax[2].set_title(prompt_2)
     ax[2].axis("off")
     
-    plt.savefig(f"{save_dir}/blending-{prompt_1}-BLEND-{prompt_2}.png")
+    plt.savefig(f"{output_path}/blending-{prompt_1}-BLEND-{prompt_2}.png")
     
     
 def read_config(config_path):
@@ -156,6 +152,23 @@ def read_config(config_path):
         os.makedirs("./out")
         
     return config["seed"], config["prompt_1_config"], config["prompt_2_config"], config["blending_config"]
+
+
+def make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config):
+    
+    output_path = os.path.join("out", str(seed), f"{prompt_1_config['prompt']}-BLEND-{prompt_2_config['prompt']}-scheduler_{blending_config['scheduler']}-model_{blending_config['model_id'].replace('/', '_')}")
+    
+    if not os.path.exists("./out"):
+        os.makedirs("./out")
+       
+    if not os.path.exists(os.path.join("out", str(seed))):
+        os.makedirs(os.path.join("out", str(seed)))
+        
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    
+    return output_path
+    
 
 
 def main():
@@ -169,17 +182,21 @@ def main():
     prompt_2 = Prompt(prompt_2_config)
     blend = Blending(blending_config)
     
+    output_path = make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config)
+    
     device = "cuda:1"
     generator = torch.manual_seed(seed)
     batch_size = 1
-
-    vae = AutoencoderKL.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="vae")
-    tokenizer = CLIPTokenizer.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="tokenizer")
-    text_encoder = CLIPTextModel.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="text_encoder")
-    unet = UNet2DConditionModel.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="unet")
-    scheduler_1 = UniPCMultistepScheduler.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="scheduler")
-    scheduler_2 = UniPCMultistepScheduler.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="scheduler")
-    scheduler_blend = UniPCMultistepScheduler.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="scheduler")
+  
+    # "CompVis/stable-diffusion-v1-4"
+    model_id = blending_config["model_id"]
+    vae = AutoencoderKL.from_pretrained(model_id, subfolder="vae")
+    tokenizer = CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer")
+    text_encoder = CLIPTextModel.from_pretrained(model_id, subfolder="text_encoder")
+    unet = UNet2DConditionModel.from_pretrained(model_id, subfolder="unet")
+    scheduler_1 = UniPCMultistepScheduler.from_pretrained(model_id, subfolder="scheduler")
+    scheduler_2 = UniPCMultistepScheduler.from_pretrained(model_id, subfolder="scheduler")
+    scheduler_blend = UniPCMultistepScheduler.from_pretrained(model_id, subfolder="scheduler")
 
     vae.to(device)
     text_encoder.to(device)
@@ -191,7 +208,7 @@ def main():
     scheduler_2.set_timesteps(prompt_2.timesteps)
     scheduler_blend.set_timesteps(blend.to_timestep)
    
-    # Move these to the prompt class 
+    # TODO: move these to the prompt class 
     text_embeddings_1 = create_text_embeddings(prompt_1.prompt, tokenizer, text_encoder, batch_size, device)
     text_embeddings_2 = create_text_embeddings(prompt_2.prompt, tokenizer, text_encoder, batch_size, device)
     
@@ -222,10 +239,10 @@ def main():
     
     decoded_images_1 = decode_images(latents = latents_1, vae = vae)
     decoded_images_2 = decode_images(latents = latents_2, vae = vae)
-    decoded_images_1[-1].save(f"out/final_image-{prompt_1.prompt}.png")
-    decoded_images_2[-1].save(f"out/final_image-{prompt_2.prompt}.png")
+    decoded_images_1[-1].save(f"{output_path}/final_image-{prompt_1.prompt}.png")
+    decoded_images_2[-1].save(f"{output_path}/final_image-{prompt_2.prompt}.png")
     
-    decoded_images_1[10].save(f"out/final_image-{prompt_1.prompt}-AT-10.png")
+    decoded_images_1[10].save(f"{output_path}/intermediate-{prompt_1.prompt}-timestep-10.png")
     
     
     from_t = 9
@@ -241,12 +258,12 @@ def main():
     )
     
     decoded_images_blend = decode_images(latents = latents_blend, vae = vae)
-    decoded_images_blend[-1].save(f"out/final_image-{prompt_1.prompt}-BLEND-{prompt_2.prompt}.png")
+    decoded_images_blend[-1].save(f"{output_path}/final_image-{prompt_1.prompt}-BLEND-{prompt_2.prompt}.png")
     
     make_animation(
         decoded_images=decoded_images_blend,
         prompt=f"{prompt_1.prompt}-BLEND-{prompt_2.prompt}",
-        save_dir="./out"
+        output_path=output_path
     )
     
     make_plots(
@@ -254,9 +271,12 @@ def main():
         image_2=decoded_images_2[-1],
         image_blend=decoded_images_blend[-1],
         prompt_1=prompt_1.prompt,
-        prompt_2=prompt_2.prompt
+        prompt_2=prompt_2.prompt,
+        output_path=output_path
     )
     
-
+    os.system(f"cp {args.config_path} {output_path}/config.json")
+    
+    
 if __name__ == "__main__":
     main()
