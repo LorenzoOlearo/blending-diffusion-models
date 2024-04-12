@@ -1,0 +1,36 @@
+{
+    "seed": 21,
+    "prompt_1_config": {
+        "prompt": "lion",
+        "timesteps": 25, 
+        "scheduler": "UniPCMultistepScheduler", 
+        "model_id": "CompVis/stable-diffusion-v1-4",
+        "height": 512,
+        "width": 512,
+        "guidance_scale": 7.5,
+        "latent_scale": 8
+    },
+
+    "prompt_2_config": {
+        "prompt": "cat",
+        "timesteps": 25,
+        "scheduler": "UniPCMultistepScheduler", 
+        "model_id": "CompVis/stable-diffusion-v1-4",
+        "height": 512,
+        "width": 512,
+        "guidance_scale": 7.5,
+        "latent_scale": 8
+    },
+
+    "blending_config": {
+        "timesteps": 25,
+        "scheduler": "UniPCMultistepScheduler", 
+        "model_id": "CompVis/stable-diffusion-v1-4",
+        "height": 512,
+        "width": 512,
+        "guidance_scale": 7.5,
+        "from_timestep": 9,
+        "to_timestep": 35,
+        "latent_scale": 8
+    }
+}
