@@ -10,8 +10,13 @@ def read_config(config_path):
 
 
 def make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config):
-    
     output_path = os.path.join("out", str(seed), f"[{prompt_1_config['prompt']}-BLEND-{prompt_2_config['prompt']}]-[from_{blending_config['from_timestep']}-to_{blending_config['to_timestep']}]-[{blending_config['scheduler']}]-[{blending_config['model_id'].replace('/', '_')}]")
+    
+    if os.path.exists(output_path):
+        i = 1
+        while os.path.exists(f"{output_path}_{i}"):
+            i += 1
+        output_path = f"{output_path}_{i}"
     
     os.makedirs("./out", exist_ok=True)
     os.makedirs(os.path.join("out", str(seed)), exist_ok=True)
