@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from transformers import CLIPTextModel, CLIPTokenizer
 from diffusers import AutoencoderKL, UNet2DConditionModel, UniPCMultistepScheduler
+from tqdm.auto import tqdm
 
 
 class Prompt(nn.Module):
@@ -14,9 +15,10 @@ class Prompt(nn.Module):
         "UniPCMultistepScheduler": UniPCMultistepScheduler
     }
     
-    def __init__(self, prompt_config, device, shared):
+    def __init__(self, prompt_config, device, generator, shared):
         super(Prompt, self).__init__()
         self.device = device
+        self.generator = generator
         self.prompt = prompt_config['prompt']
         self.timesteps = prompt_config['timesteps']
         self.model_id = prompt_config['model_id']
@@ -47,12 +49,16 @@ class Prompt(nn.Module):
         self.scheduler = Prompt.scheduler_map[prompt_config['scheduler']].from_pretrained(self.model_id, subfolder="scheduler")
         self.scheduler.set_timesteps(self.timesteps)
         
+        self.latents = []
+        latent_shape = (self.batch_size, self.unet.config.in_channels, self.height // self.latent_scale, self.width // self.latent_scale)
+        latent = torch.randn(latent_shape, generator=self.generator)
+        latent = latent * self.scheduler.init_noise_sigma
+        latent = latent.to(device)
+        self.latents.append(latent)
         
-    def get_text_embeddings(self):
-        return self._create_text_embeddings()
         
         
-    def _create_text_embeddings(self):
+    def create_text_embeddings(self):
         batch_size = self.batch_size
         
         text_input = self.tokenizer(
@@ -64,7 +70,7 @@ class Prompt(nn.Module):
         )
 
         with torch.no_grad():
-            text_embeddings = self.text_encoder(text_input.input_ids.to(self.device))[0]
+            text_embeddings = self.text_encoder(text_input.inputuids.to(self.device))[0]
             
         max_length = text_input.input_ids.shape[-1]
         uncond_input = self.tokenizer(
@@ -75,16 +81,37 @@ class Prompt(nn.Module):
         )
         
         uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(self.device))[0]
-        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        self.text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
         
-        return text_embeddings
-   
+    
+    
+    def reverse(self):
+        latent = self.latents[0]
+        for t in tqdm(self.scheduler.timesteps):
+            # Expand the latents if we are doing classifier-free guidance to avoid doing two forward passes
+            latent_model_input = torch.cat([latent] * 2)
+
+            latent_model_input = self.scheduler.scale_model_input(latent_model_input, timestep=t)
+            
+            # Predict the noise residual
+            with torch.no_grad():
+                noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=self.text_embeddings).sample
+
+            # Perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+            # Compute the previous noisy sample x_t -> x_t-1
+            latent = self.scheduler.step(noise_pred, t, latent).prev_sample
+            self.latents.append(latent)
+            
+            
     
         
 class Blending(Prompt):
     
-    def __init__(self, blending_config, device):
-        super(Blending, self).__init__(blending_config, device, shared=blending_config["shared"])
+    def __init__(self, blending_config, generator, device):
+        super(Blending, self).__init__(blending_config, device, generator=generator, shared=blending_config["shared"])
         self.from_timestep = blending_config['from_timestep']
         self.to_timestep = blending_config['to_timestep']
         self.scheduler.set_timesteps(self.to_timestep)

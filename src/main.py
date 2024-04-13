@@ -5,25 +5,14 @@ Author: Lorenzo Olearo
 TODO: Test other schedulers
 """
 
-
-import os
-import json
 import torch
 import argparse
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 from PIL import Image
-from transformers import CLIPTextModel, CLIPTokenizer
-from diffusers import AutoencoderKL, UNet2DConditionModel, PNDMScheduler
 from tqdm.auto import tqdm
 
-from diffusers import StableDiffusionPipeline
-from diffusers import UniPCMultistepScheduler
-
 from prompts import Prompt, Blending
-import plots
-import utils
+import plots as plots
+import utils as utils
 
 
 
@@ -97,11 +86,11 @@ def main():
     device = "cuda:1"
     
     seed, prompt_1_config, prompt_2_config, blending_config  = utils.read_config(args.config_path)
-    prompt_1 = Prompt(prompt_1_config, device=device, shared=blending_config["shared"]).to(device)
-    prompt_2 = Prompt(prompt_2_config, device=device, shared=blending_config["shared"]).to(device)
-    
-    blend = Blending(blending_config, device)
     generator = torch.manual_seed(seed)
+    prompt_1 = Prompt(prompt_1_config, device=device, generator=generator, shared=blending_config["shared"]).to(device)
+    prompt_2 = Prompt(prompt_2_config, device=device, generator=generator, shared=blending_config["shared"]).to(device)
+    
+    blend = Blending(blending_config, generator, device)
     batch_size = 1
     
     output_path = utils.make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config)
@@ -118,7 +107,7 @@ def main():
         latents = latents.copy(),
         scheduler = prompt_1.scheduler,
         unet = prompt_1.unet,
-        text_embeddings = prompt_1.get_text_embeddings(),
+        text_embeddings = prompt_1.text_embeddings,
         guidance_scale = prompt_1.guidance_scale 
     )
     
@@ -126,7 +115,7 @@ def main():
         latents = latents.copy(),
         scheduler = prompt_2.scheduler,
         unet = prompt_2.unet,
-        text_embeddings = prompt_2.get_text_embeddings(),
+        text_embeddings = prompt_2.text_embeddings,
         guidance_scale = prompt_2.guidance_scale 
     )
     
