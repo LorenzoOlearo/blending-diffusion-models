@@ -114,9 +114,7 @@ def main():
     latent = latent.to(device)
     latents.append(latent)
     
-    latents_1 = reverse_limits(
-        from_t = 0,
-        to_t = 25,
+    latents_1 = reverse(
         latents = latents.copy(),
         scheduler = prompt_1.scheduler,
         unet = prompt_1.unet,
@@ -124,9 +122,7 @@ def main():
         guidance_scale = prompt_1.guidance_scale 
     )
     
-    latents_2 = reverse_limits(
-        from_t = 0,
-        to_t = 25,
+    latents_2 = reverse(
         latents = latents.copy(),
         scheduler = prompt_2.scheduler,
         unet = prompt_2.unet,
