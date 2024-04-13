@@ -2,9 +2,6 @@
 Blending Stable Diffusion
 
 Author: Lorenzo Olearo
-TODO: Instantiate the models and the schedulers from the config file
-TODO: Refactor the code to make it more modular
-TODO: Test v2-1 with and without negative prompts
 TODO: Test other schedulers
 """
 
@@ -91,33 +88,6 @@ def decode_images(latents, vae):
     return decoded_images
 
 
-def read_config(config_path):
-    with open(config_path, "r") as f:
-        config = json.load(f)
-        
-    if not os.path.exists("./out"):
-        os.makedirs("./out")
-        
-    return config["seed"], config["prompt_1_config"], config["prompt_2_config"], config["blending_config"]
-
-
-def make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config):
-    
-    output_path = os.path.join("out", str(seed), f"{prompt_1_config['prompt']}-BLEND-{prompt_2_config['prompt']}-scheduler_{blending_config['scheduler']}-model_{blending_config['model_id'].replace('/', '_')}")
-    
-    if not os.path.exists("./out"):
-        os.makedirs("./out")
-       
-    if not os.path.exists(os.path.join("out", str(seed))):
-        os.makedirs(os.path.join("out", str(seed)))
-        
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-    
-    return output_path
-    
-
-
 def main():
     
     parser = argparse.ArgumentParser(prog="Blending Diffusion Models")
@@ -126,20 +96,19 @@ def main():
     
     device = "cuda:1"
     
-    seed, prompt_1_config, prompt_2_config, blending_config  = read_config(args.config_path)
-    prompt_1 = Prompt(prompt_1_config, device)
-    prompt_2 = Prompt(prompt_2_config, device)
+    seed, prompt_1_config, prompt_2_config, blending_config  = utils.read_config(args.config_path)
+    prompt_1 = Prompt(prompt_1_config, device=device, shared=blending_config["shared"]).to(device)
+    prompt_2 = Prompt(prompt_2_config, device=device, shared=blending_config["shared"]).to(device)
+    
     blend = Blending(blending_config, device)
     generator = torch.manual_seed(seed)
     batch_size = 1
     
-    output_path = make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config)
+    output_path = utils.make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config)
     
     latents = []
     latent_shape = (batch_size, blend.unet.config.in_channels, blend.height // blend.latent_scale, blend.width // blend.latent_scale)
    
-    # TODO: move these to the prompt class 
-    
     latent = torch.randn(latent_shape, generator=generator)
     latent = latent * blend.scheduler.init_noise_sigma
     latent = latent.to(device)
@@ -151,7 +120,7 @@ def main():
         latents = latents.copy(),
         scheduler = prompt_1.scheduler,
         unet = prompt_1.unet,
-        text_embeddings = prompt_1.text_embeddings,
+        text_embeddings = prompt_1.get_text_embeddings(),
         guidance_scale = prompt_1.guidance_scale 
     )
     
@@ -161,7 +130,7 @@ def main():
         latents = latents.copy(),
         scheduler = prompt_2.scheduler,
         unet = prompt_2.unet,
-        text_embeddings = prompt_2.text_embeddings,
+        text_embeddings = prompt_2.get_text_embeddings(),
         guidance_scale = prompt_2.guidance_scale 
     )
     
@@ -175,14 +144,13 @@ def main():
     plots.save_image(decoded_images_2[-1], f"final_image-{prompt_2.prompt}", output_path)
     plots.save_image(decoded_images_1[blend.from_timestep], f"intermediate-{prompt_1.prompt}-timestep-{blend.from_timestep}", output_path)
     
-    
     latents_blend=reverse_limits(
         from_t = blend.from_timestep,
         to_t = blend.to_timestep, 
         latents = [latents_1[blend.from_timestep]],
         scheduler = blend.scheduler,
         unet = blend.unet,
-        text_embeddings = prompt_2.text_embeddings,
+        text_embeddings = prompt_2.get_text_embeddings(),
         guidance_scale = blend.guidance_scale
     )
     

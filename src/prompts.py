@@ -1,11 +1,21 @@
 import torch
+import torch.nn as nn
 from transformers import CLIPTextModel, CLIPTokenizer
 from diffusers import AutoencoderKL, UNet2DConditionModel, UniPCMultistepScheduler
 
 
-class Prompt:
+class Prompt(nn.Module):
+    vae = None 
+    tokenizer = None
+    text_encoder = None
+    unet = None
     
-    def __init__(self, prompt_config, device):
+    scheduler_map = {
+        "UniPCMultistepScheduler": UniPCMultistepScheduler
+    }
+    
+    def __init__(self, prompt_config, device, shared):
+        super(Prompt, self).__init__()
         self.device = device
         self.prompt = prompt_config['prompt']
         self.timesteps = prompt_config['timesteps']
@@ -18,21 +28,28 @@ class Prompt:
         # TODO: Find a sensible way of managing batch size
         self.batch_size = 1
         
-        self.vae = AutoencoderKL.from_pretrained(self.model_id, subfolder="vae")
-        self.tokenizer = CLIPTokenizer.from_pretrained(self.model_id, subfolder="tokenizer")
-        self.text_encoder = CLIPTextModel.from_pretrained(self.model_id, subfolder="text_encoder")
-        self.unet = UNet2DConditionModel.from_pretrained(self.model_id, subfolder="unet")
+        if (not shared):
+            self.vae = AutoencoderKL.from_pretrained(self.model_id, subfolder="vae")
+            self.tokenizer = CLIPTokenizer.from_pretrained(self.model_id, subfolder="tokenizer")
+            self.text_encoder = CLIPTextModel.from_pretrained(self.model_id, subfolder="text_encoder")
+            self.unet = UNet2DConditionModel.from_pretrained(self.model_id, subfolder="unet")
+        else:
+            if Prompt.vae is None:
+                Prompt.vae = AutoencoderKL.from_pretrained(self.model_id, subfolder="vae")
+                Prompt.tokenizer = CLIPTokenizer.from_pretrained(self.model_id, subfolder="tokenizer")
+                Prompt.text_encoder = CLIPTextModel.from_pretrained(self.model_id, subfolder="text_encoder")
+                Prompt.unet = UNet2DConditionModel.from_pretrained(self.model_id, subfolder="unet")
+            self.vae = Prompt.vae
+            self.tokenizer = Prompt.tokenizer
+            self.text_encoder = Prompt.text_encoder
+            self.unet = Prompt.unet
         
-        # TODO: Load scheduler according to the prompt_config
-        self.scheduler = UniPCMultistepScheduler.from_pretrained(self.model_id, subfolder="scheduler")
-        
-        self.vae.to(self.device)
-        self.text_encoder.to(self.device)
-        self.unet.to(self.device)
-        
+        self.scheduler = Prompt.scheduler_map[prompt_config['scheduler']].from_pretrained(self.model_id, subfolder="scheduler")
         self.scheduler.set_timesteps(self.timesteps)
         
-        self.text_embeddings = self._create_text_embeddings()
+        
+    def get_text_embeddings(self):
+        return self._create_text_embeddings()
         
         
     def _create_text_embeddings(self):
@@ -64,31 +81,11 @@ class Prompt:
    
     
         
-class Blending:
+class Blending(Prompt):
     
     def __init__(self, blending_config, device):
-        self.model_id = blending_config['model_id']
-        self.height = blending_config['height']
-        self.width = blending_config['width']
-        self.guidance_scale = blending_config['guidance_scale']
-        self.latent_scale = blending_config['latent_scale']
+        super(Blending, self).__init__(blending_config, device, shared=blending_config["shared"])
         self.from_timestep = blending_config['from_timestep']
         self.to_timestep = blending_config['to_timestep']
-        self.latent_scale = blending_config['latent_scale']
-        
-        # TODO: Load scheduler according to the blending_config
-        # self.scheduler = blending_config['scheduler']
-        self.scheduler = UniPCMultistepScheduler.from_pretrained(self.model_id, subfolder="scheduler")
-        
-        # self.scheduler = UniPCMultistepScheduler.from_pretrained(blending_config['scheduler'], subfolder="scheduler")
-        self.vae = AutoencoderKL.from_pretrained(self.model_id, subfolder="vae")
-        self.tokenizer = CLIPTokenizer.from_pretrained(self.model_id, subfolder="tokenizer")
-        self.text_encoder = CLIPTextModel.from_pretrained(self.model_id, subfolder="text_encoder")
-        self.unet = UNet2DConditionModel.from_pretrained(self.model_id, subfolder="unet")
-        
-        self.vae.to(device)
-        self.text_encoder.to(device)
-        self.unet.to(device)
-        
         self.scheduler.set_timesteps(self.to_timestep)
         
