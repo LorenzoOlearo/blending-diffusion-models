@@ -1,3 +1,14 @@
+"""
+Blending Stable Diffusion
+
+Author: Lorenzo Olearo
+TODO: Instantiate the models and the schedulers from the config file
+TODO: Refactor the code to make it more modular
+TODO: Test v2-1 with and without negative prompts
+TODO: Test other schedulers
+"""
+
+
 import os
 import json
 import torch
@@ -14,34 +25,9 @@ from diffusers import StableDiffusionPipeline
 from diffusers import UniPCMultistepScheduler
 
 from prompts import Prompt, Blending
+import plots
+import utils
 
-
-def create_text_embeddings(prompt: str, tokenizer: CLIPTokenizer, text_encoder: CLIPTextModel, batch_size: int, device: str):
-    batch_size = batch_size
-    
-    text_input = tokenizer(
-        prompt,
-        padding="max_length",
-        max_length=tokenizer.model_max_length,
-        truncation=True,
-        return_tensors="pt"
-    )
-
-    with torch.no_grad():
-        text_embeddings = text_encoder(text_input.input_ids.to(device))[0]
-        
-    max_length = text_input.input_ids.shape[-1]
-    uncond_input = tokenizer(
-        [""] * batch_size,
-        padding="max_length",
-        max_length=max_length,
-        return_tensors="pt"
-    )
-    
-    uncond_embeddings = text_encoder(uncond_input.input_ids.to(device))[0]
-    text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
-    
-    return text_embeddings
 
 
 def reverse(latents, scheduler, unet, text_embeddings, guidance_scale):
@@ -105,45 +91,6 @@ def decode_images(latents, vae):
     return decoded_images
 
 
-def make_animation(decoded_images: list, prompt: str, output_path: str):
-    fig, ax = plt.subplots()
-
-    plt.title(prompt[0])
-    ax.set_yticklabels([])
-    ax.set_xticklabels([])
-    ax.yaxis.set_visible(False)
-    ax.xaxis.set_visible(False)
-
-    ims = []
-    for i in range(len(decoded_images)):
-        im = ax.imshow(decoded_images[i], animated=True) 
-        if i == 0:
-            ax.imshow(decoded_images[i])
-        ims.append([im])
-
-    ani = animation.ArtistAnimation(fig, ims, interval=250, blit=True, repeat_delay=2000)
-    
-    save_path = f"{output_path}/denoising-{prompt}.gif"
-    ani.save(save_path)
-    
-    
-def make_plots(image_1, image_2, image_blend, prompt_1, prompt_2, output_path):
-    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-    ax[0].imshow(image_1)
-    ax[0].set_title(prompt_1)
-    ax[0].axis("off")
-    
-    ax[1].imshow(image_blend)
-    ax[1].set_title(f"{prompt_1}-BLEND-{prompt_2}")
-    ax[1].axis("off")
-    
-    ax[2].imshow(image_2)
-    ax[2].set_title(prompt_2)
-    ax[2].axis("off")
-    
-    plt.savefig(f"{output_path}/blending-{prompt_1}-BLEND-{prompt_2}.png")
-    
-    
 def read_config(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
@@ -177,43 +124,24 @@ def main():
     parser.add_argument("config_path", type=str, help="Path to the config file", default="config.json")
     args = parser.parse_args()
     
+    device = "cuda:1"
+    
     seed, prompt_1_config, prompt_2_config, blending_config  = read_config(args.config_path)
-    prompt_1 = Prompt(prompt_1_config)
-    prompt_2 = Prompt(prompt_2_config)
-    blend = Blending(blending_config)
+    prompt_1 = Prompt(prompt_1_config, device)
+    prompt_2 = Prompt(prompt_2_config, device)
+    blend = Blending(blending_config, device)
+    generator = torch.manual_seed(seed)
+    batch_size = 1
     
     output_path = make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config)
     
-    device = "cuda:1"
-    generator = torch.manual_seed(seed)
-    batch_size = 1
-  
-    # "CompVis/stable-diffusion-v1-4"
-    model_id = blending_config["model_id"]
-    vae = AutoencoderKL.from_pretrained(model_id, subfolder="vae")
-    tokenizer = CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer")
-    text_encoder = CLIPTextModel.from_pretrained(model_id, subfolder="text_encoder")
-    unet = UNet2DConditionModel.from_pretrained(model_id, subfolder="unet")
-    scheduler_1 = UniPCMultistepScheduler.from_pretrained(model_id, subfolder="scheduler")
-    scheduler_2 = UniPCMultistepScheduler.from_pretrained(model_id, subfolder="scheduler")
-    scheduler_blend = UniPCMultistepScheduler.from_pretrained(model_id, subfolder="scheduler")
-
-    vae.to(device)
-    text_encoder.to(device)
-    unet.to(device)
-    
     latents = []
-    latent_shape = (batch_size, unet.config.in_channels, blend.height // blend.latent_scale, blend.width // blend.latent_scale)
-    scheduler_1.set_timesteps(prompt_1.timesteps)
-    scheduler_2.set_timesteps(prompt_2.timesteps)
-    scheduler_blend.set_timesteps(blend.to_timestep)
+    latent_shape = (batch_size, blend.unet.config.in_channels, blend.height // blend.latent_scale, blend.width // blend.latent_scale)
    
     # TODO: move these to the prompt class 
-    text_embeddings_1 = create_text_embeddings(prompt_1.prompt, tokenizer, text_encoder, batch_size, device)
-    text_embeddings_2 = create_text_embeddings(prompt_2.prompt, tokenizer, text_encoder, batch_size, device)
     
     latent = torch.randn(latent_shape, generator=generator)
-    latent = latent * scheduler_1.init_noise_sigma
+    latent = latent * blend.scheduler.init_noise_sigma
     latent = latent.to(device)
     latents.append(latent)
     
@@ -221,9 +149,9 @@ def main():
         from_t = 0,
         to_t = 25,
         latents = latents.copy(),
-        scheduler = scheduler_1,
-        unet = unet,
-        text_embeddings = text_embeddings_1,
+        scheduler = prompt_1.scheduler,
+        unet = prompt_1.unet,
+        text_embeddings = prompt_1.text_embeddings,
         guidance_scale = prompt_1.guidance_scale 
     )
     
@@ -231,52 +159,52 @@ def main():
         from_t = 0,
         to_t = 25,
         latents = latents.copy(),
-        scheduler = scheduler_2,
-        unet = unet,
-        text_embeddings = text_embeddings_2,
-        guidance_scale = prompt_2.guidance_scale
+        scheduler = prompt_2.scheduler,
+        unet = prompt_2.unet,
+        text_embeddings = prompt_2.text_embeddings,
+        guidance_scale = prompt_2.guidance_scale 
     )
     
-    decoded_images_1 = decode_images(latents = latents_1, vae = vae)
-    decoded_images_2 = decode_images(latents = latents_2, vae = vae)
-    decoded_images_1[-1].save(f"{output_path}/final_image-{prompt_1.prompt}.png")
-    decoded_images_2[-1].save(f"{output_path}/final_image-{prompt_2.prompt}.png")
+    decoded_images_1 = decode_images(latents=latents_1, vae=prompt_1.vae)
+    decoded_images_2 = decode_images(latents=latents_2, vae=prompt_2.vae)
+   
+    # decoded_images_1[-1].save(f"{output_path}/final_image-{prompt_1.prompt}.png")
+    # decoded_images_2[-1].save(f"{output_path}/final_image-{prompt_2.prompt}.png")
+    # decoded_images_1[blend.from_timestep].save(f"{output_path}/intermediate-{prompt_1.prompt}-timestep-{blend.from_timestep}.png")
+    plots.save_image(decoded_images_1[-1], f"final_image-{prompt_1.prompt}", output_path)
+    plots.save_image(decoded_images_2[-1], f"final_image-{prompt_2.prompt}", output_path)
+    plots.save_image(decoded_images_1[blend.from_timestep], f"intermediate-{prompt_1.prompt}-timestep-{blend.from_timestep}", output_path)
     
-    decoded_images_1[10].save(f"{output_path}/intermediate-{prompt_1.prompt}-timestep-10.png")
     
-    
-    from_t = 9
-    to_t = 35
-    latents_blend = reverse_limits(
-        from_t = from_t,
-        to_t = to_t, 
-        latents = [latents_1[from_t]],
-        scheduler = scheduler_blend,
-        unet = unet,
-        text_embeddings = text_embeddings_2,
+    latents_blend=reverse_limits(
+        from_t = blend.from_timestep,
+        to_t = blend.to_timestep, 
+        latents = [latents_1[blend.from_timestep]],
+        scheduler = blend.scheduler,
+        unet = blend.unet,
+        text_embeddings = prompt_2.text_embeddings,
         guidance_scale = blend.guidance_scale
     )
     
-    decoded_images_blend = decode_images(latents = latents_blend, vae = vae)
+    decoded_images_blend = decode_images(latents=latents_blend, vae=blend.vae)
     decoded_images_blend[-1].save(f"{output_path}/final_image-{prompt_1.prompt}-BLEND-{prompt_2.prompt}.png")
     
-    make_animation(
+    plots.make_animation(
         decoded_images=decoded_images_blend,
         prompt=f"{prompt_1.prompt}-BLEND-{prompt_2.prompt}",
         output_path=output_path
     )
     
-    make_plots(
-        image_1=decoded_images_1[-1],
-        image_2=decoded_images_2[-1],
-        image_blend=decoded_images_blend[-1],
-        prompt_1=prompt_1.prompt,
-        prompt_2=prompt_2.prompt,
-        output_path=output_path
+    plots.make_plots(
+        image_1 = decoded_images_1[-1],
+        image_2 = decoded_images_2[-1],
+        image_blend = decoded_images_blend[-1],
+        prompt_1 = prompt_1.prompt,
+        prompt_2 = prompt_2.prompt,
+        output_path = output_path
     )
     
-    os.system(f"cp {args.config_path} {output_path}/config.json")
-    
+    utils.save_configuration(args.config_path, output_path)
     
 if __name__ == "__main__":
     main()
