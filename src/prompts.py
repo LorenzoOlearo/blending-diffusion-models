@@ -49,6 +49,8 @@ class Prompt(nn.Module):
         self.scheduler = Prompt.scheduler_map[prompt_config['scheduler']].from_pretrained(self.model_id, subfolder="scheduler")
         self.scheduler.set_timesteps(self.timesteps)
         
+        self.text_embeddings = None
+        
         self.latents = []
         latent_shape = (self.batch_size, self.unet.config.in_channels, self.height // self.latent_scale, self.width // self.latent_scale)
         latent = torch.randn(latent_shape, generator=self.generator)
@@ -70,7 +72,7 @@ class Prompt(nn.Module):
         )
 
         with torch.no_grad():
-            text_embeddings = self.text_encoder(text_input.inputuids.to(self.device))[0]
+            text_embeddings = self.text_encoder(text_input.input_ids.to(self.device))[0]
             
         max_length = text_input.input_ids.shape[-1]
         uncond_input = self.tokenizer(
@@ -110,9 +112,30 @@ class Prompt(nn.Module):
         
 class Blending(Prompt):
     
-    def __init__(self, blending_config, generator, device):
+    def __init__(self, blending_config, prompts, generator, device):
         super(Blending, self).__init__(blending_config, device, generator=generator, shared=blending_config["shared"])
         self.from_timestep = blending_config['from_timestep']
         self.to_timestep = blending_config['to_timestep']
         self.scheduler.set_timesteps(self.to_timestep)
+        self.prompts = prompts
+        self.latents = []
+        self.base_latent = None
+        
+        
+    def reverse_limits(self, base_latent):
+        self.base_latent = base_latent
+        self.latents.append(self.base_latent)
+        
+        for t in tqdm(range(self.from_timestep, self.to_timestep)):
+            latent_model_input = torch.cat([self.latents[t-self.from_timestep]] * 2)
+            latent_model_input = self.scheduler.scale_model_input(latent_model_input, timestep=t)
+            
+            with torch.no_grad():
+                noise_pred = self.unet(latent_model_input, self.scheduler.timesteps[t], encoder_hidden_states=self.prompts[1].text_embeddings).sample
+
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+            latent = self.scheduler.step(noise_pred, self.scheduler.timesteps[t], self.latents[t-self.from_timestep]).prev_sample
+            self.latents.append(latent)
         
