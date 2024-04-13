@@ -137,9 +137,6 @@ def main():
     decoded_images_1 = decode_images(latents=latents_1, vae=prompt_1.vae)
     decoded_images_2 = decode_images(latents=latents_2, vae=prompt_2.vae)
    
-    # decoded_images_1[-1].save(f"{output_path}/final_image-{prompt_1.prompt}.png")
-    # decoded_images_2[-1].save(f"{output_path}/final_image-{prompt_2.prompt}.png")
-    # decoded_images_1[blend.from_timestep].save(f"{output_path}/intermediate-{prompt_1.prompt}-timestep-{blend.from_timestep}.png")
     plots.save_image(decoded_images_1[-1], f"final_image-{prompt_1.prompt}", output_path)
     plots.save_image(decoded_images_2[-1], f"final_image-{prompt_2.prompt}", output_path)
     plots.save_image(decoded_images_1[blend.from_timestep], f"intermediate-{prompt_1.prompt}-timestep-{blend.from_timestep}", output_path)
