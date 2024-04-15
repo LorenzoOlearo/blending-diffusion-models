@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 
 
 def read_config(config_path):
@@ -17,22 +18,17 @@ def make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config):
     output_path = os.path.join(output_path, f"[{prompt_1_config['prompt']}-BLEND-{prompt_2_config['prompt']}]-[from_{blending_config['from_timestep']}]-[to_{blending_config['to_timestep']}]-[{blending_config['scheduler']}]-[{blending_config['model_id'].replace('/', '-')}]-[p1_{prompt_1_config['timesteps']}]-[p2_{prompt_2_config['timesteps']}]")  
     
     if os.path.exists(output_path):
-        
         overwrite = input(f"Output directory {output_path} already exists. Do you want to overwrite it? (y/N): ")
-        
         if overwrite.lower() == "y":
             print("Overwriting...")
-            os.system(f"rm -rf {output_path}")
+            shutil.rmtree(output_path)
         else:
             name = input("Would you like to append a name to this run? (Leave blank for progressive numbering): ")
-            if name != "":
-                output_path = f"{output_path}-{name}"
-            else: 
+            if name == "":
                 name = 1
                 while os.path.exists(f"{output_path}-{name}"):
                     name += 1
             output_path = f"{output_path}-{name}"
-                
     
     os.makedirs("./out", exist_ok=True)
     os.makedirs(os.path.join("out", str(seed)), exist_ok=True)
