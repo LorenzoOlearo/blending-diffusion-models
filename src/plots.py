@@ -6,7 +6,6 @@ def save_image(image, filename, output_path):
     image.save(f"{output_path}/{filename}.png")
     
 
-
 def make_animation(decoded_images: list, prompt: str, output_path: str):
     fig, ax = plt.subplots()
 
@@ -29,18 +28,20 @@ def make_animation(decoded_images: list, prompt: str, output_path: str):
     ani.save(save_path)
     
     
-def make_plots(image_1, image_2, image_blend, prompt_1, prompt_2, output_path):
+def make_plots(image_1, image_2, image_blend, prompt_1, prompt_2, output_path, p1_t, p2_t, blending_from_t, blending_to_t):
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    # Set title and timesteps on new line
     ax[0].imshow(image_1)
-    ax[0].set_title(prompt_1)
+    ax[0].set_title(prompt_1+f"\ntimesteps: {p1_t}")
     ax[0].axis("off")
     
+    
     ax[1].imshow(image_blend)
-    ax[1].set_title(f"{prompt_1}-BLEND-{prompt_2}")
+    ax[1].set_title(f"{prompt_1}-BLEND-{prompt_2}"+f"\ntimesteps from {blending_from_t} to {blending_to_t}")
     ax[1].axis("off")
     
     ax[2].imshow(image_2)
-    ax[2].set_title(prompt_2)
+    ax[2].set_title(prompt_2+f"\ntimesteps: {p2_t}")
     ax[2].axis("off")
     
     plt.savefig(f"{output_path}/blending-{prompt_1}-BLEND-{prompt_2}.png")

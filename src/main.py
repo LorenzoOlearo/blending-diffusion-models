@@ -76,7 +76,11 @@ def main():
         image_blend = decoded_images_blend[-1],
         prompt_1 = prompt_1.prompt,
         prompt_2 = prompt_2.prompt,
-        output_path = output_path
+        output_path = output_path,
+        p1_t = prompt_1.timesteps,
+        p2_t = prompt_2.timesteps,
+        blending_from_t = blend.from_timestep,
+        blending_to_t = blend.to_timestep
     )
     
     utils.save_configuration(args.config_path, output_path)
