@@ -21,7 +21,7 @@ with the following structure:
 out/
 `-- {prompt_1}-BLEND-{prompt_2}
     `-- {seed} 
-        |-- [{prompt_1}-BLEND-{prompt_2}]-[from_{t}]-[to_{t}]-[{scheduler}]-[{model_id}]-[p1_{t}]-[p2_{t}]
+        |-- [from_{t}]-[to_{t}]-[{scheduler}]-[{model_id}]-[p1_{t}]-[p2_{t}]
         |   |-- blending-{prompt_1}-BLEND-{prompt_2}.png
         |   |-- config.json
         |   |-- denoising-{prompt_1}-BLEND-{prompt_2}.gif
