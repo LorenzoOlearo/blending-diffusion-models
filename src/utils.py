@@ -1,6 +1,28 @@
 import os
 import json
 import shutil
+import torch
+from PIL import Image
+
+
+def decode_image(latent, vae):
+    latent = 1 / 0.18215 * latent
+    with torch.no_grad():
+        image = vae.decode(latent).sample
+    image = (image / 2 + 0.5).clamp(0, 1).squeeze()
+    image = (image.permute(1, 2, 0) * 255).to(torch.uint8).cpu().numpy()
+    image = Image.fromarray(image)
+    
+    return image
+
+
+def decode_images(latents, vae):
+    decoded_images = []
+    for latent in latents:
+        decoded_image = decode_image(latent, vae)
+        decoded_images.append(decoded_image)
+        
+    return decoded_images
 
 
 def read_config(config_path):
