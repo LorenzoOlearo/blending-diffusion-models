@@ -30,9 +30,10 @@
         "height": 512,
         "width": 512,
         "guidance_scale": 7.5,
-        "from_timestep": 9,
-        "to_timestep": 35,
+        "from_timestep": 12,
+        "to_timestep": 25,
         "latent_scale": 8,
-        "shared": true
+        "shared_pipeline": true,
+        "shared_generator": true 
     }
 }

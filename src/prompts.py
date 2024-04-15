@@ -10,15 +10,15 @@ class Prompt(nn.Module):
     tokenizer = None
     text_encoder = None
     unet = None
+    generator = None
     
     scheduler_map = {
         "UniPCMultistepScheduler": UniPCMultistepScheduler
     }
     
-    def __init__(self, prompt_config, device, generator, shared):
+    def __init__(self, prompt_config, device, seed, shared_pipeline, shared_generator):
         super(Prompt, self).__init__()
         self.device = device
-        self.generator = generator
         self.prompt = prompt_config['prompt']
         self.timesteps = prompt_config['timesteps']
         self.model_id = prompt_config['model_id']
@@ -30,7 +30,7 @@ class Prompt(nn.Module):
         # TODO: Find a sensible way of managing batch size
         self.batch_size = 1
         
-        if (not shared):
+        if (not shared_pipeline):
             self.vae = AutoencoderKL.from_pretrained(self.model_id, subfolder="vae")
             self.tokenizer = CLIPTokenizer.from_pretrained(self.model_id, subfolder="tokenizer")
             self.text_encoder = CLIPTextModel.from_pretrained(self.model_id, subfolder="text_encoder")
@@ -45,6 +45,14 @@ class Prompt(nn.Module):
             self.tokenizer = Prompt.tokenizer
             self.text_encoder = Prompt.text_encoder
             self.unet = Prompt.unet
+            self.generator = Prompt.generator
+            
+        if (not shared_generator):
+            self.generator = torch.manual_seed(seed)
+        else:
+            if Prompt.generator is None:
+                Prompt.generator = torch.manual_seed(seed)
+            self.generator = Prompt.generator
         
         self.scheduler = Prompt.scheduler_map[prompt_config['scheduler']].from_pretrained(self.model_id, subfolder="scheduler")
         self.scheduler.set_timesteps(self.timesteps)
@@ -58,7 +66,7 @@ class Prompt(nn.Module):
         latent = latent.to(device)
         self.latents.append(latent)
         
-        
+       
         
     def create_text_embeddings(self):
         batch_size = self.batch_size
@@ -86,7 +94,6 @@ class Prompt(nn.Module):
         self.text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
         
     
-    
     def reverse(self):
         latent = self.latents[0]
         for t in tqdm(self.scheduler.timesteps):
@@ -112,8 +119,8 @@ class Prompt(nn.Module):
         
 class Blending(Prompt):
     
-    def __init__(self, blending_config, prompts, generator, device):
-        super(Blending, self).__init__(blending_config, device, generator=generator, shared=blending_config["shared"])
+    def __init__(self, blending_config, prompts, seed, device):
+        super(Blending, self).__init__(blending_config, device, seed=seed, shared_pipeline=blending_config["shared_pipeline"], shared_generator=blending_config["shared_generator"])
         self.from_timestep = blending_config['from_timestep']
         self.to_timestep = blending_config['to_timestep']
         self.scheduler.set_timesteps(self.to_timestep)

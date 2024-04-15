@@ -44,22 +44,36 @@ def main():
     device = "cuda:1"
     
     seed, prompt_1_config, prompt_2_config, blending_config  = utils.read_config(args.config_path)
-    generator = torch.manual_seed(seed)
-    prompt_1 = Prompt(prompt_1_config, device=device, generator=generator, shared=blending_config["shared"]).to(device)
-    prompt_2 = Prompt(prompt_2_config, device=device, generator=generator, shared=blending_config["shared"]).to(device)
-    
-    blend = Blending(blending_config, [prompt_1, prompt_2], generator, device)
-    batch_size = 1
-    
+    prompt_1 = Prompt(
+        prompt_1_config,
+        seed=seed,
+        shared_pipeline=blending_config["shared_pipeline"],
+        shared_generator=blending_config["shared_generator"],
+        device=device
+    ).to(device)
+    prompt_2 = Prompt(
+        prompt_2_config,
+        seed=seed,
+        shared_pipeline=blending_config["shared_pipeline"],
+        shared_generator=blending_config["shared_generator"],
+        device=device
+    ).to(device)
+    blend = Blending(
+        blending_config,
+        prompts=[prompt_1, prompt_2],
+        seed=seed,
+        device=device
+    )
+        
     output_path = utils.make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config)
     
-    latents = []
-    latent_shape = (batch_size, blend.unet.config.in_channels, blend.height // blend.latent_scale, blend.width // blend.latent_scale)
+    # latents = []
+    # latent_shape = (batch_size, blend.unet.config.in_channels, blend.height // blend.latent_scale, blend.width // blend.latent_scale)
    
-    latent = torch.randn(latent_shape, generator=generator)
-    latent = latent * blend.scheduler.init_noise_sigma
-    latent = latent.to(device)
-    latents.append(latent)
+    # latent = torch.randn(latent_shape, generator=generator)
+    # latent = latent * blend.scheduler.init_noise_sigma
+    # latent = latent.to(device)
+    # latents.append(latent)
     
     prompt_1.create_text_embeddings()
     prompt_2.create_text_embeddings()
