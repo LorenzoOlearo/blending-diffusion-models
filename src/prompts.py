@@ -16,46 +16,22 @@ class Prompt(nn.Module):
         "UniPCMultistepScheduler": UniPCMultistepScheduler
     }
     
-    def __init__(self, prompt_config, device, seed, shared_pipeline, shared_generator):
+    def __init__(self, prompt, config, generator, vae, tokenizer, text_encoder, unet, scheduler):
         super(Prompt, self).__init__()
-        self.device = device
-        self.prompt = prompt_config['prompt']
-        self.timesteps = prompt_config['timesteps']
-        self.model_id = prompt_config['model_id']
-        self.height = prompt_config['height']
-        self.width = prompt_config['width']
-        self.guidance_scale = prompt_config['guidance_scale']
-        self.latent_scale = prompt_config['latent_scale']
+        self.prompt = prompt
+        self.timesteps = config['timesteps']
+        self.model_id = config['model_id']
+        self.height = config['height']
+        self.width = config['width']
+        self.guidance_scale = config['guidance_scale']
+        self.latent_scale = config['latent_scale']
+        self.generator = generator
+        self.decoded_images = []
         
         # TODO: Find a sensible way of managing batch size
         self.batch_size = 1
         
-        if (not shared_pipeline):
-            self.vae = AutoencoderKL.from_pretrained(self.model_id, subfolder="vae")
-            self.tokenizer = CLIPTokenizer.from_pretrained(self.model_id, subfolder="tokenizer")
-            self.text_encoder = CLIPTextModel.from_pretrained(self.model_id, subfolder="text_encoder")
-            self.unet = UNet2DConditionModel.from_pretrained(self.model_id, subfolder="unet")
-        else:
-            if Prompt.vae is None:
-                Prompt.vae = AutoencoderKL.from_pretrained(self.model_id, subfolder="vae")
-                Prompt.tokenizer = CLIPTokenizer.from_pretrained(self.model_id, subfolder="tokenizer")
-                Prompt.text_encoder = CLIPTextModel.from_pretrained(self.model_id, subfolder="text_encoder")
-                Prompt.unet = UNet2DConditionModel.from_pretrained(self.model_id, subfolder="unet")
-            self.vae = Prompt.vae
-            self.tokenizer = Prompt.tokenizer
-            self.text_encoder = Prompt.text_encoder
-            self.unet = Prompt.unet
-            self.generator = Prompt.generator
-            
-        if (not shared_generator):
-            self.generator = torch.manual_seed(seed)
-        else:
-            if Prompt.generator is None:
-                Prompt.generator = torch.manual_seed(seed)
-            self.generator = Prompt.generator
         
-        self.scheduler = Prompt.scheduler_map[prompt_config['scheduler']].from_pretrained(self.model_id, subfolder="scheduler")
-        self.scheduler.set_timesteps(self.timesteps)
         
         self.text_embeddings = None
         
@@ -63,8 +39,18 @@ class Prompt(nn.Module):
         latent_shape = (self.batch_size, self.unet.config.in_channels, self.height // self.latent_scale, self.width // self.latent_scale)
         latent = torch.randn(latent_shape, generator=self.generator)
         latent = latent * self.scheduler.init_noise_sigma
-        latent = latent.to(device)
         self.latents.append(latent)
+        
+    
+    @torch.no_grad()    
+    def to(self, device):
+        self.device = device
+        # self.scheduler.to(device)
+        self.unet.to(device)
+        self.text_encoder.to(device)
+        self.vae.to(device)
+        self.latents = [latent.to(device) for latent in self.latents]
+        return self
         
        
         
@@ -119,10 +105,10 @@ class Prompt(nn.Module):
         
 class Blending(Prompt):
     
-    def __init__(self, blending_config, prompts, seed, device):
-        super(Blending, self).__init__(blending_config, device, seed=seed, shared_pipeline=blending_config["shared_pipeline"], shared_generator=blending_config["shared_generator"])
-        self.from_timestep = blending_config['from_timestep']
-        self.to_timestep = blending_config['to_timestep']
+    def __init__(self, config, generator, prompts, vae, tokenizer, text_encoder, unet, scheduler):
+        super(Blending, self).__init__("", config, generator, vae, tokenizer, text_encoder, unet, scheduler)
+        self.from_timestep = config['from_timestep']
+        self.to_timestep = ['to_timestep']
         self.scheduler.set_timesteps(self.to_timestep)
         self.prompts = prompts
         self.latents = []

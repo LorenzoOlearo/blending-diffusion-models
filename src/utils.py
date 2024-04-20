@@ -29,15 +29,24 @@ def read_config(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
         
-    return config["seed"], config["prompt_1_config"], config["prompt_2_config"], config["blending_config"]
+    return config
 
 # Output path:
 # out/{prompt_1}-BLEND-{prompt_2}/seed/[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler}]-[{model_id}]-[p1_{prompt_1_timesteps}]-[p2_{prompt_2_timesteps}
-def make_output_dir(seed, prompt_1_config, prompt_2_config, blending_config):
+def make_output_dir(config):
+    seed = config["seed"]
+    scheduler_name = config["scheduler"]
+    model_id = config["model_id"].replace("/", "-")
+    prompt_1 = config["prompt_1"]
+    prompt_2 = config["prompt_2"]
+    timesteps = config["timesteps"]
+    from_timestep = config["from_timestep"]
+    to_timestep = config["to_timestep"]
+    
     output_path = "./out"
-    output_path = os.path.join(output_path, f"{prompt_1_config['prompt']}-BLEND-{prompt_2_config['prompt']}")
+    output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
     output_path = os.path.join(output_path, str(seed))
-    output_path = os.path.join(output_path, f"[from_{blending_config['from_timestep']}]-[to_{blending_config['to_timestep']}]-[{blending_config['scheduler']}]-[{blending_config['model_id'].replace('/', '-')}]-[p1_{prompt_1_config['timesteps']}]-[p2_{prompt_2_config['timesteps']}]")  
+    output_path = os.path.join(output_path, f"[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")  
     
     if os.path.exists(output_path):
         overwrite = input(f"Output directory {output_path} already exists. Do you want to overwrite it? (y/N): ")
