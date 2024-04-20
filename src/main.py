@@ -42,7 +42,8 @@ def main():
         scheduler=scheduler
     ).to(device)
     
-    generator = torch.Generator(device=device).manual_seed(config["seed"])
+    # generator = torch.Generator(device=device).manual_seed(config["seed"])
+    generator = torch.manual_seed(config["seed"])
     
     prompt_1_latents, prompt_2_latents, blend_latents = pipeline(config=config, generator=generator)
     

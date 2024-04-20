@@ -22,8 +22,10 @@ class SingleDiffusionPipeline(DiffusionPipeline):
         
         latents = []
         latent_shape = (batch_size, self.unet.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
-        latent = torch.randn(latent_shape, generator=generator, device=self.device)
+        # latent = torch.randn(latent_shape, generator=generator, device=self.device)
+        latent = torch.randn(latent_shape, generator=generator)
         latent = latent * self.scheduler.init_noise_sigma
+        latent = latent.to(self.device)
         latents.append(latent)
         
         text_embeddings = self.create_text_embeddings(prompt, batch_size)
