@@ -33,8 +33,7 @@ def read_config(config_path):
 
 # Output path:
 # out/{prompt_1}-BLEND-{prompt_2}/seed/[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler}]-[{model_id}]-[p1_{prompt_1_timesteps}]-[p2_{prompt_2_timesteps}
-def make_output_dir(config):
-    seed = config["seed"]
+def make_output_dir(seed, config):
     scheduler_name = config["scheduler"]
     model_id = config["model_id"].replace("/", "-")
     prompt_1 = config["prompt_1"]

@@ -8,9 +8,6 @@ from prompts import Prompt, Blending
 from single_diffusion_pipeline import SingleDiffusionPipeline
 
 
-# TODO:
-#   Pass the generator in the constructor of the BlendedDiffusionPipeline
-#   Manage the generators outside of the Prompt class
 class BlendedDiffusionPipeline(DiffusionPipeline):
     
     scheduler_map = {

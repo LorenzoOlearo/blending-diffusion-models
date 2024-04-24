@@ -26,7 +26,6 @@ def main():
     device = "cuda:1"
     
     config = utils.read_config(args.config_path)
-    output_path = utils.make_output_dir(config)
     
     vae = AutoencoderKL.from_pretrained(config["model_id"], subfolder="vae")
     tokenizer = CLIPTokenizer.from_pretrained(config["model_id"], subfolder="tokenizer")
@@ -41,25 +40,29 @@ def main():
         unet=unet,
         scheduler=scheduler
     ).to(device)
+   
+    # TEMPORARY: batch_size should be implemented from the latent dimension
+    for seed in config["seeds"]:
+        print(f"Running seed {seed}")
+        output_path = utils.make_output_dir(seed, config)
+        generator = torch.Generator(device=device).manual_seed(seed)
+        # generator = torch.manual_seed(seed)
     
-    # generator = torch.Generator(device=device).manual_seed(config["seed"])
-    generator = torch.manual_seed(config["seed"])
+        prompt_1_latents, prompt_2_latents, blend_latents = pipeline(config=config, generator=generator)
     
-    prompt_1_latents, prompt_2_latents, blend_latents = pipeline(config=config, generator=generator)
-    
-    prompt_1_images = utils.decode_images(prompt_1_latents, vae)
-    prompt_2_images = utils.decode_images(prompt_2_latents, vae)
-    blen_images = utils.decode_images(blend_latents, vae)
-    
-    plots.save_all_outputs(
-        config=config,
-        prompt_1_images=prompt_1_images,
-        prompt_2_images=prompt_2_images,
-        blend_images=blen_images,
-        output_path=output_path
-    )
-     
-    utils.save_configuration(args.config_path, output_path)
+        prompt_1_images = utils.decode_images(prompt_1_latents, vae)
+        prompt_2_images = utils.decode_images(prompt_2_latents, vae)
+        blen_images = utils.decode_images(blend_latents, vae)
+        
+        plots.save_all_outputs(
+            config=config,
+            prompt_1_images=prompt_1_images,
+            prompt_2_images=prompt_2_images,
+            blend_images=blen_images,
+            output_path=output_path
+        )
+        
+        utils.save_configuration(args.config_path, output_path)
     
 if __name__ == "__main__":
     main()
