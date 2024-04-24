@@ -40,11 +40,13 @@ def main():
         unet=unet,
         scheduler=scheduler
     ).to(device)
-   
+  
     # TEMPORARY: batch_size should be implemented from the latent dimension
+    output_paths = []
     for seed in config["seeds"]:
         print(f"Running seed {seed}")
         output_path = utils.make_output_dir(seed, config)
+        output_paths.append(output_path)
         generator = torch.Generator(device=device).manual_seed(seed)
         # generator = torch.manual_seed(seed)
     
@@ -63,6 +65,9 @@ def main():
         )
         
         utils.save_configuration(args.config_path, output_path)
+        
+    plots.make_blending_batch_grid(output_paths, config) 
+    
     
 if __name__ == "__main__":
     main()
