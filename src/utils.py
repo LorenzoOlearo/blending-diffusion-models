@@ -44,6 +44,7 @@ def make_output_dir(seed, config, overwrite):
     
     output_path = "./out"
     output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
+    output_path = os.path.join(output_path, f"[from_{from_timestep}]-[to_{to_timestep}]")
     output_path = os.path.join(output_path, str(seed))
     output_path = os.path.join(output_path, f"[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")  
    

@@ -89,9 +89,14 @@ def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, out
     
     
 def make_blending_batch_grid(output_paths, config):
+    seeds = config["seeds"]
+    scheduler_name = config["scheduler"]
+    model_id = config["model_id"].replace("/", "-")
     prompt_1 = config["prompt_1"]
     prompt_2 = config["prompt_2"]
-    seeds = config["seeds"]
+    timesteps = config["timesteps"]
+    from_timestep = config["from_timestep"]
+    to_timestep = config["to_timestep"]
    
     rows = [] 
     for folder in output_paths:
@@ -100,11 +105,11 @@ def make_blending_batch_grid(output_paths, config):
         blend_image = plt.imread(os.path.join(folder, f"final_image-{prompt_1}-BLEND-{prompt_2}.png"))
         rows.append([image_1, blend_image, image_2])
         
-    fig, axs = plt.subplots(len(rows), 3, figsize=(10, 15))
-
+    fig, axs = plt.subplots(len(rows), 3, figsize=(20, 32))
+    fig.suptitle(f'{prompt_1}-BLEND-{prompt_2}-from_{from_timestep}-to_{to_timestep}-[{scheduler_name}]-[{model_id}]', fontsize=20)
+    
     for i, row in enumerate(rows):
         axs[i, 1].set_title(f'Seed: {seeds[i]}')
-        
         axs[i, 0].imshow(row[0])
         axs[i, 0].axis("off")
         axs[i, 1].imshow(row[1])
@@ -112,6 +117,12 @@ def make_blending_batch_grid(output_paths, config):
         axs[i, 2].imshow(row[2])
         axs[i, 2].axis("off")
     
-    plt.tight_layout()  
-    plt.savefig(f"./out/{config['prompt_1']}-BLEND-{config['prompt_2']}/blending-results.png")
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.95)
+    
+    save_path = "./out"
+    save_path = os.path.join(save_path, f"{prompt_1}-BLEND-{prompt_2}")
+    save_path = os.path.join(save_path, f"[from_{from_timestep}]-[to_{to_timestep}]")
+    save_path = os.path.join(save_path, f"results-[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler_name}]-[{model_id}]")
+    plt.savefig(save_path)
     
