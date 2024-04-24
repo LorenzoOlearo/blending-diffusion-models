@@ -21,6 +21,7 @@ def main():
     
     parser = argparse.ArgumentParser(prog="Blending Diffusion Models")
     parser.add_argument("config_path", type=str, help="Path to the config file", default="config.json")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite the output directory if it exists")
     args = parser.parse_args()
     
     device = "cuda:1"
@@ -45,7 +46,7 @@ def main():
     output_paths = []
     for seed in config["seeds"]:
         print(f"Running seed {seed}")
-        output_path = utils.make_output_dir(seed, config)
+        output_path = utils.make_output_dir(seed, config, overwrite=args.overwrite)
         output_paths.append(output_path)
         generator = torch.Generator(device=device).manual_seed(seed)
         # generator = torch.manual_seed(seed)
