@@ -1,5 +1,5 @@
 {
-    "seed": 21,
+    "seeds": [21, 314, 561, 41041, 9746347772161],
     "prompt_1": "lion",
     "prompt_2": "cat",
     "timesteps": 25,
