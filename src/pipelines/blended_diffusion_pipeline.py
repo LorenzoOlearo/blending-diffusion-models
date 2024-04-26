@@ -4,8 +4,7 @@ from diffusers import DiffusionPipeline, UniPCMultistepScheduler
 
 import plots as plots
 import utils as utils
-from prompts import Prompt, Blending
-from single_diffusion_pipeline import SingleDiffusionPipeline
+from pipelines.single_diffusion_pipeline import SingleDiffusionPipeline
 
 
 class BlendedDiffusionPipeline(DiffusionPipeline):

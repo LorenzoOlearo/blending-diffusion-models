@@ -14,6 +14,9 @@ from diffusers import AutoencoderKL, UNet2DConditionModel, UniPCMultistepSchedul
 import plots as plots
 import utils as utils
 from pipelines.blended_diffusion_pipeline import BlendedDiffusionPipeline
+from pipelines.blended_in_unet_pipeline import BlendedInUnetPipeline
+from models.blended_unet import BlendedUNet2DConditionModel
+
 
 
 def main():
@@ -22,6 +25,7 @@ def main():
     parser = argparse.ArgumentParser(prog="Blending Diffusion Models")
     parser.add_argument("config_path", type=str, help="Path to the config file", default="config.json")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite the output directory if it exists")
+    parser.add_argument("--method", type=str, help="Method to use for blending", default="blended_diffusion")
     args = parser.parse_args()
     
     device = "cuda:1"
@@ -32,16 +36,33 @@ def main():
     tokenizer = CLIPTokenizer.from_pretrained(config["model_id"], subfolder="tokenizer")
     text_encoder = CLIPTextModel.from_pretrained(config["model_id"], subfolder="text_encoder")
     unet = UNet2DConditionModel.from_pretrained(config["model_id"], subfolder="unet")
+    unet_base = UNet2DConditionModel.from_pretrained(config["model_id"], subfolder="unet")
+    unet_blend = BlendedUNet2DConditionModel.from_pretrained(config["model_id"], subfolder="unet")
     scheduler = UniPCMultistepScheduler.from_pretrained(config["model_id"], subfolder="scheduler")
     
-    pipeline = BlendedDiffusionPipeline(
-        vae=vae,
-        tokenizer=tokenizer,
-        text_encoder=text_encoder,
-        unet=unet,
-        scheduler=scheduler
-    ).to(device)
-  
+    if args.method == "blended_diffusion":
+        print("Initializing Blended Diffusion Pipeline")
+        pipeline = BlendedDiffusionPipeline(
+            vae=vae,
+            tokenizer=tokenizer,
+            text_encoder=text_encoder,
+            unet=unet,
+            scheduler=scheduler
+        ).to(device)
+        
+    elif args.method == "blended_in_unet":
+        print("Initializing Blended in UNet Pipeline")
+        pipeline = BlendedInUnetPipeline(
+            vae=vae,
+            tokenizer=tokenizer,
+            text_encoder=text_encoder,
+            unet_base=unet_base,
+            unet_blend=unet_blend,
+            scheduler=scheduler
+        ).to(device)
+    else:
+        raise ValueError(f"Method {args.method} not recognized")
+    
     # TEMPORARY: batch_size should be implemented from the latent dimension
     output_paths = []
     for seed in config["seeds"]:
