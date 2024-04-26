@@ -4,12 +4,6 @@ from PIL import Image
 import numpy as np
 import os
 
-from mpl_toolkits.axes_grid1 import ImageGrid
-
-
-import utils
-
-
 def save_image(image, filename, output_path):
     image.save(f"{output_path}/{filename}.png")
     
