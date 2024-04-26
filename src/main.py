@@ -18,14 +18,12 @@ from pipelines.blended_in_unet_pipeline import BlendedInUnetPipeline
 from models.blended_unet import BlendedUNet2DConditionModel
 
 
-
 def main():
     torch.cuda.empty_cache()
     
     parser = argparse.ArgumentParser(prog="Blending Diffusion Models")
     parser.add_argument("config_path", type=str, help="Path to the config file", default="config.json")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite the output directory if it exists")
-    parser.add_argument("--method", type=str, help="Method to use for blending", default="blended_diffusion")
     args = parser.parse_args()
     
     device = "cuda:1"
@@ -39,56 +37,59 @@ def main():
     unet_base = UNet2DConditionModel.from_pretrained(config["model_id"], subfolder="unet")
     unet_blend = BlendedUNet2DConditionModel.from_pretrained(config["model_id"], subfolder="unet")
     scheduler = UniPCMultistepScheduler.from_pretrained(config["model_id"], subfolder="scheduler")
+ 
     
-    if args.method == "blended_diffusion":
-        print("Initializing Blended Diffusion Pipeline")
-        pipeline = BlendedDiffusionPipeline(
-            vae=vae,
-            tokenizer=tokenizer,
-            text_encoder=text_encoder,
-            unet=unet,
-            scheduler=scheduler
-        ).to(device)
+    for blend_method in config["blend_methods"]:
+            
+        if blend_method == "blended_diffusion":
+            print("Initializing Blended Diffusion Pipeline")
+            pipeline = BlendedDiffusionPipeline(
+                vae=vae,
+                tokenizer=tokenizer,
+                text_encoder=text_encoder,
+                unet=unet,
+                scheduler=scheduler
+            ).to(device)
+            
+        elif blend_method == "blended_in_unet":
+            print("Initializing Blended in UNet Pipeline")
+            pipeline = BlendedInUnetPipeline(
+                vae=vae,
+                tokenizer=tokenizer,
+                text_encoder=text_encoder,
+                unet_base=unet_base,
+                unet_blend=unet_blend,
+                scheduler=scheduler
+            ).to(device)
+        else:
+            raise ValueError(f"Method {blend_method} not recognized. Available methods: blended_diffusion, blended_in_unet")
         
-    elif args.method == "blended_in_unet":
-        print("Initializing Blended in UNet Pipeline")
-        pipeline = BlendedInUnetPipeline(
-            vae=vae,
-            tokenizer=tokenizer,
-            text_encoder=text_encoder,
-            unet_base=unet_base,
-            unet_blend=unet_blend,
-            scheduler=scheduler
-        ).to(device)
-    else:
-        raise ValueError(f"Method {args.method} not recognized")
-    
-    # TEMPORARY: batch_size should be implemented from the latent dimension
-    output_paths = []
-    for seed in config["seeds"]:
-        print(f"Running seed {seed}")
-        output_path = utils.make_output_dir(seed, config, overwrite=args.overwrite)
-        output_paths.append(output_path)
-        generator = torch.Generator(device=device).manual_seed(seed)
-        # generator = torch.manual_seed(seed)
-    
-        prompt_1_latents, prompt_2_latents, blend_latents = pipeline(config=config, generator=generator)
-    
-        prompt_1_images = utils.decode_images(prompt_1_latents, vae)
-        prompt_2_images = utils.decode_images(prompt_2_latents, vae)
-        blen_images = utils.decode_images(blend_latents, vae)
+        # TEMPORARY: batch_size should be implemented from the latent dimension
+        output_paths = []
+        for seed in config["seeds"]:
+            print(f"Running seed {seed}")
+            output_path = utils.make_output_dir(seed, config, blend_method, overwrite=args.overwrite)
+            output_paths.append(output_path)
+            generator = torch.Generator(device=device).manual_seed(seed)
+            # generator = torch.manual_seed(seed)
         
-        plots.save_all_outputs(
-            config=config,
-            prompt_1_images=prompt_1_images,
-            prompt_2_images=prompt_2_images,
-            blend_images=blen_images,
-            output_path=output_path
-        )
+            prompt_1_latents, prompt_2_latents, blend_latents = pipeline(config=config, generator=generator)
         
-        utils.save_configuration(args.config_path, output_path)
-        
-    plots.make_blending_batch_grid(output_paths, config) 
+            prompt_1_images = utils.decode_images(prompt_1_latents, vae)
+            prompt_2_images = utils.decode_images(prompt_2_latents, vae)
+            blen_images = utils.decode_images(blend_latents, vae)
+            
+            plots.save_all_outputs(
+                config=config,
+                prompt_1_images=prompt_1_images,
+                prompt_2_images=prompt_2_images,
+                blend_images=blen_images,
+                output_path=output_path
+            )
+            
+            utils.save_configuration(args.config_path, output_path)
+            
+        plots.make_blending_batch_grid(output_paths, blend_method, config) 
     
     
 if __name__ == "__main__":

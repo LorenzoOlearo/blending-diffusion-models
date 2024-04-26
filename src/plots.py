@@ -88,7 +88,7 @@ def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, out
     )
     
     
-def make_blending_batch_grid(output_paths, config):
+def make_blending_batch_grid(output_paths, blend_method, config):
     seeds = config["seeds"]
     scheduler_name = config["scheduler"]
     model_id = config["model_id"].replace("/", "-")
@@ -105,11 +105,18 @@ def make_blending_batch_grid(output_paths, config):
         blend_image = plt.imread(os.path.join(folder, f"final_image-{prompt_1}-BLEND-{prompt_2}.png"))
         rows.append([image_1, blend_image, image_2])
         
+    plt.close()
     fig, axs = plt.subplots(len(rows), 3, figsize=(20, 32))
-    fig.suptitle(f'{prompt_1}-BLEND-{prompt_2}-from_{from_timestep}-to_{to_timestep}-[{scheduler_name}]-[{model_id}]', fontsize=20)
+    
+    if blend_method == "blended_diffusion":
+        fig.suptitle(f'{blend_method}-{prompt_1}-BLEND-{prompt_2}-from_{from_timestep}-to_{to_timestep}-[{scheduler_name}]-[{model_id}]', fontsize=20)
+    elif blend_method == "blended_in_unet":
+        fig.suptitle(f'{blend_method}-{prompt_1}-BLEND-{prompt_2}-[{scheduler_name}]-[{model_id}]-p1_{timesteps}-p2_{timesteps}', fontsize=20)
     
     for i, row in enumerate(rows):
+        axs[i, 0].set_title(f'prompt 1: {prompt_1}')
         axs[i, 1].set_title(f'Seed: {seeds[i]}')
+        axs[i, 2].set_title(f'prompt 2: {prompt_2}')
         axs[i, 0].imshow(row[0])
         axs[i, 0].axis("off")
         axs[i, 1].imshow(row[1])
@@ -124,5 +131,18 @@ def make_blending_batch_grid(output_paths, config):
     save_path = os.path.join(save_path, f"{prompt_1}-BLEND-{prompt_2}")
     save_path = os.path.join(save_path, f"[from_{from_timestep}]-[to_{to_timestep}]")
     save_path = os.path.join(save_path, f"results-[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler_name}]-[{model_id}]")
-    plt.savefig(save_path)
+    
+    if blend_method == "blended_diffusion":
+        output_path = "./out"
+        output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
+        output_path = os.path.join(output_path, blend_method)
+        output_path = os.path.join(output_path, f"[from_{from_timestep}]-[to_{to_timestep}]")
+        output_path = os.path.join(output_path, f"{blend_method}-batch_grid.png")
+    elif blend_method == "blended_in_unet":
+        output_path = "./out"
+        output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
+        output_path = os.path.join(output_path, blend_method)
+        output_path = os.path.join(output_path, f"{blend_method}-batch_grid.png")
+       
+    plt.savefig(output_path)
     
