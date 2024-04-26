@@ -13,7 +13,7 @@ from diffusers import AutoencoderKL, UNet2DConditionModel, UniPCMultistepSchedul
 
 import plots as plots
 import utils as utils
-from blended_diffusion_pipeline import BlendedDiffusionPipeline
+from pipelines.blended_diffusion_pipeline import BlendedDiffusionPipeline
 
 
 def main():
