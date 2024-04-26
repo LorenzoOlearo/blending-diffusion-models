@@ -45,12 +45,18 @@ class BlendedInUnetPipeline(DiffusionPipeline):
         
         batch_size = 1 
         latents = []
-        latent_shape = (batch_size, self.unet_blend.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
-        latent = torch.randn(latent_shape, generator=generator, device=self.device)
-        # latent = torch.randn(latent_shape, generator=generator)
-        latent = latent * self.scheduler.init_noise_sigma
-        latent = latent.to(self.device)
-        latents.append(latent)
+        
+        # latent_shape = (batch_size, self.unet_blend.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
+        # latent = torch.randn(latent_shape, generator=generator, device=self.device)
+        # # latent = torch.randn(latent_shape, generator=generator)
+        # latent = latent * self.scheduler.init_noise_sigma
+        # latent = latent.to(self.device)
+        
+        # Instead of using another random latent, for the blending phase we use
+        # the first latent from the first prompt, this results in a generated
+        # image with the same "shape" as the first prompt but with the features
+        # of the second.
+        latents.append(prompt_1_latents[0])
         
         blend_latents = self.reverse_blend_unet(config, latents, prompt_1_embeddings, prompt_2_embeddings)
         
