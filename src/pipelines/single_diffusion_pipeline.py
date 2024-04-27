@@ -14,23 +14,32 @@ class SingleDiffusionPipeline(DiffusionPipeline):
         self.register_modules(unet=unet, scheduler=scheduler, vae=vae, tokenizer=tokenizer, text_encoder=text_encoder)
         
         
-    def __call__(self, prompt, config, generator):
+    def __call__(self, prompt, config, generator, prompt_embeddings=None, base_latent=None):
         
         timesteps = config["timesteps"]
         self.scheduler.set_timesteps(timesteps)
         batch_size = 1
         
         latents = []
-        latent_shape = (batch_size, self.unet.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
-        latent = torch.randn(latent_shape, generator=generator, device=self.device)
-        # latent = torch.randn(latent_shape, generator=generator)
-        latent = latent * self.scheduler.init_noise_sigma
-        latent = latent.to(self.device)
-        latents.append(latent)
+        if base_latent is not None:
+            latents.append(base_latent)
+        else:
+            latent_shape = (batch_size, self.unet.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
+            latent = torch.randn(latent_shape, generator=generator, device=self.device)
+            # latent = torch.randn(latent_shape, generator=generator)
+            latent = latent * self.scheduler.init_noise_sigma
+            latent = latent.to(self.device)
+            latents.append(latent)
         
-        text_embeddings = self.create_text_embeddings(prompt, batch_size)
+        if prompt is not None:
+            text_embeddings = self.create_text_embeddings(prompt, batch_size)
+        elif prompt_embeddings is not None:
+            text_embeddings = prompt_embeddings
+        else:
+            raise ValueError("Prompt or prompt_embeddings must be provided") 
+            
+        
         latent = latents[0]
-        
         for t in tqdm(self.scheduler.timesteps):
             # Expand the latents if we are doing classifier-free guidance to avoid doing two forward passes
             latent_model_input = torch.cat([latent] * 2)

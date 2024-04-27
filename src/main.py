@@ -15,6 +15,7 @@ import plots as plots
 import utils as utils
 from pipelines.blended_diffusion_pipeline import BlendedDiffusionPipeline
 from pipelines.blended_in_unet_pipeline import BlendedInUnetPipeline
+from pipelines.blended_interpolated_prompts_pipeline import BlendedInterpolatedPromptsPipeline
 from models.blended_unet import BlendedUNet2DConditionModel
 
 
@@ -40,7 +41,6 @@ def main():
  
     
     for blend_method in config["blend_methods"]:
-            
         if blend_method == "blended_diffusion":
             print("Initializing Blended Diffusion Pipeline")
             pipeline = BlendedDiffusionPipeline(
@@ -50,7 +50,6 @@ def main():
                 unet=unet,
                 scheduler=scheduler
             ).to(device)
-            
         elif blend_method == "blended_in_unet":
             print("Initializing Blended in UNet Pipeline")
             pipeline = BlendedInUnetPipeline(
@@ -61,8 +60,17 @@ def main():
                 unet_blend=unet_blend,
                 scheduler=scheduler
             ).to(device)
+        elif blend_method == "blended_interpolated_prompts":
+            print("Initializing Blended Interpolated Prompts Pipeline")
+            pipeline = BlendedInterpolatedPromptsPipeline(
+                vae=vae,
+                tokenizer=tokenizer,
+                text_encoder=text_encoder,
+                unet=unet,
+                scheduler=scheduler
+            ).to(device)
         else:
-            raise ValueError(f"Method {blend_method} not recognized. Available methods: blended_diffusion, blended_in_unet")
+            raise ValueError(f"Method {blend_method} not recognized. Available methods: blended_diffusion, blended_in_unet, blended_interpolated_prompts")
         
         # TEMPORARY: batch_size should be implemented from the latent dimension
         output_paths = []
@@ -77,14 +85,15 @@ def main():
         
             prompt_1_images = utils.decode_images(prompt_1_latents, vae)
             prompt_2_images = utils.decode_images(prompt_2_latents, vae)
-            blen_images = utils.decode_images(blend_latents, vae)
+            blend_images = utils.decode_images(blend_latents, vae)
             
             plots.save_all_outputs(
                 config=config,
                 prompt_1_images=prompt_1_images,
                 prompt_2_images=prompt_2_images,
-                blend_images=blen_images,
-                output_path=output_path
+                blend_images=blend_images,
+                output_path=output_path, 
+                blend_method=blend_method
             )
             
             utils.save_configuration(args.config_path, output_path)

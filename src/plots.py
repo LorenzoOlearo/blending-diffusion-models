@@ -49,7 +49,8 @@ def make_plots(image_1, image_2, image_blend, prompt_1, prompt_2, output_path, p
     plt.savefig(f"{output_path}/blending-{prompt_1}-BLEND-{prompt_2}.png")
     
 
-def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, output_path):
+# TODO: refactor considering the new config structure and the different methods of blending
+def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, blend_method, output_path):
     prompt_1 = config["prompt_1"]
     prompt_2 = config["prompt_2"]
     timesteps = config["timesteps"]
@@ -106,6 +107,9 @@ def make_blending_batch_grid(output_paths, blend_method, config):
         fig.suptitle(f'{blend_method}-{prompt_1}-BLEND-{prompt_2}-from_{from_timestep}-to_{to_timestep}-[{scheduler_name}]-[{model_id}]', fontsize=20)
     elif blend_method == "blended_in_unet":
         fig.suptitle(f'{blend_method}-{prompt_1}-BLEND-{prompt_2}-[{scheduler_name}]-[{model_id}]-p1_{timesteps}-p2_{timesteps}', fontsize=20)
+    elif blend_method == "blended_interpolated_prompts":
+        interpolation_scale = config["blended_interpolated_prompts_scale"]
+        fig.suptitle(f'{blend_method}-{interpolation_scale}-{prompt_1}-BLEND-{prompt_2}-[{scheduler_name}]-[{model_id}]-p1_{timesteps}-p2_{timesteps}', fontsize=20)
     
     for i, row in enumerate(rows):
         axs[i, 0].set_title(f'prompt 1: {prompt_1}')
@@ -126,17 +130,20 @@ def make_blending_batch_grid(output_paths, blend_method, config):
     save_path = os.path.join(save_path, f"[from_{from_timestep}]-[to_{to_timestep}]")
     save_path = os.path.join(save_path, f"results-[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler_name}]-[{model_id}]")
     
+    output_path = "./out"
+    output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
+    output_path = os.path.join(output_path, blend_method)
     if blend_method == "blended_diffusion":
-        output_path = "./out"
-        output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
-        output_path = os.path.join(output_path, blend_method)
         output_path = os.path.join(output_path, f"[from_{from_timestep}]-[to_{to_timestep}]")
         output_path = os.path.join(output_path, f"{blend_method}-batch_grid.png")
     elif blend_method == "blended_in_unet":
-        output_path = "./out"
-        output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
-        output_path = os.path.join(output_path, blend_method)
         output_path = os.path.join(output_path, f"{blend_method}-batch_grid.png")
+    elif blend_method == "blended_interpolated_prompts":
+        interpolation_scale = config["blended_interpolated_prompts_scale"]
+        output_path = os.path.join(output_path, str(interpolation_scale))
+        output_path = os.path.join(output_path, f"{blend_method}-batch_grid.png")
+    else:
+        raise ValueError(f"Method {blend_method} not recognized.")
        
     plt.savefig(output_path)
     
