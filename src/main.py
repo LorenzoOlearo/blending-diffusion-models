@@ -16,7 +16,7 @@ import utils as utils
 from pipelines.blended_diffusion_pipeline import BlendedDiffusionPipeline
 from pipelines.blended_in_unet_pipeline import BlendedInUnetPipeline
 from pipelines.blended_interpolated_prompts_pipeline import BlendedInterpolatedPromptsPipeline
-from pipelines.blended_switch_unet_pipeline import BlendedSwitchUnetPipeline
+from pipelines.blended_alternate_unet_prompts_pipeline import BlendedAlternateUnetPipeline
 from models.blended_unet import BlendedUNet2DConditionModel
 
 
@@ -40,7 +40,6 @@ def main():
     unet_blend = BlendedUNet2DConditionModel.from_pretrained(config["model_id"], subfolder="unet")
     scheduler = UniPCMultistepScheduler.from_pretrained(config["model_id"], subfolder="scheduler")
  
-    
     for blend_method in config["blend_methods"]:
         if blend_method == "blended_diffusion":
             print("Initializing Blended Diffusion Pipeline")
@@ -70,9 +69,9 @@ def main():
                 unet=unet,
                 scheduler=scheduler
             ).to(device)
-        elif blend_method == "blended_switch_unet":
-            print("Initializing Blended Switch UNet Pipeline")
-            pipeline = BlendedSwitchUnetPipeline(
+        elif blend_method == "blended_alternate_unet":
+            print("Initializing Blended Alternate UNet Pipeline")
+            pipeline = BlendedAlternateUnetPipeline(
                 vae=vae,
                 tokenizer=tokenizer,
                 text_encoder=text_encoder,

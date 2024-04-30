@@ -56,7 +56,7 @@ def make_output_dir(seed, config, blend_method, overwrite):
         output_path = os.path.join(output_path, str(interpolation_scale))
         output_path = os.path.join(output_path, str(seed))
         output_path = os.path.join(output_path, f"[{blend_method}]-[scale_{interpolation_scale}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")
-    elif blend_method == "blended_switch_unet":
+    elif blend_method == "blended_alternate_unet":
         output_path = os.path.join(output_path, str(seed))
         output_path = os.path.join(output_path, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")
     else:

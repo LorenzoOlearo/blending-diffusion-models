@@ -110,6 +110,9 @@ def make_blending_batch_grid(output_paths, blend_method, config):
     elif blend_method == "blended_interpolated_prompts":
         interpolation_scale = config["blended_interpolated_prompts_scale"]
         fig.suptitle(f'{blend_method}-{interpolation_scale}-{prompt_1}-BLEND-{prompt_2}-[{scheduler_name}]-[{model_id}]-p1_{timesteps}-p2_{timesteps}', fontsize=20)
+    elif blend_method == "blended_alternate_unet":
+        fig.suptitle(f'{blend_method}-{prompt_1}-BLEND-{prompt_2}-[{scheduler_name}]-[{model_id}]-p1_{timesteps}-p2_{timesteps}', fontsize=20)
+    
     
     for i, row in enumerate(rows):
         axs[i, 0].set_title(f'prompt 1: {prompt_1}')
@@ -142,7 +145,7 @@ def make_blending_batch_grid(output_paths, blend_method, config):
         interpolation_scale = config["blended_interpolated_prompts_scale"]
         output_path = os.path.join(output_path, str(interpolation_scale))
         output_path = os.path.join(output_path, f"{blend_method}-batch_grid.png")
-    elif blend_method == "blended_switch_unet":
+    elif blend_method == "blended_alternate_unet":
         output_path = os.path.join(output_path, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")
     else:
         raise ValueError(f"Method {blend_method} not recognized.")
