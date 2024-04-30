@@ -15,16 +15,20 @@ class SingleDiffusionPipeline(DiffusionPipeline):
         
         
     def __call__(self, prompt, config, generator, prompt_embeddings=None, base_latent=None):
-        
         timesteps = config["timesteps"]
+        height = config["height"]
+        width = config["width"]
+        latent_scale = config["latent_scale"]
+        same_base_latent = config["same_base_latent"]
+        
         self.scheduler.set_timesteps(timesteps)
         batch_size = 1
         
         latents = []
-        if config["same_base_latent"] == True and base_latent is not None:
+        if same_base_latent == True and base_latent is not None:
             latents.append(base_latent)
-        elif config["same_base_latent"] == False:
-            latent_shape = (batch_size, self.unet.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
+        elif same_base_latent == False:
+            latent_shape = (batch_size, self.unet.config.in_channels, height // latent_scale, width // latent_scale)
             latent = torch.randn(latent_shape, generator=generator, device=self.device)
             latent = latent * self.scheduler.init_noise_sigma
             latent = latent.to(self.device)
@@ -36,18 +40,29 @@ class SingleDiffusionPipeline(DiffusionPipeline):
             text_embeddings = prompt_embeddings
         else:
             raise ValueError("Prompt or prompt_embeddings must be provided") 
-            
         
-        latent = latents[0]
+        latents = self.reverse(config, latents[-1], text_embeddings)
+        
+        return latents, text_embeddings
+    
+    
+    def reverse(self, config, base_latent, prompt_embeddings):
+        latents = []
+        latents.append(base_latent)
+       
         for t in tqdm(self.scheduler.timesteps):
+            latent = latents[-1]
             # Expand the latents if we are doing classifier-free guidance to avoid doing two forward passes
             latent_model_input = torch.cat([latent] * 2)
 
             latent_model_input = self.scheduler.scale_model_input(latent_model_input, timestep=t)
             
-            # Predict the noise residual
             with torch.no_grad():
-                noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
+                noise_pred = self.unet_blend(
+                    latent_model_input,
+                    t,
+                    encoder_hidden_states=prompt_embeddings,
+                ).sample
 
             # Perform guidance
             noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
@@ -57,13 +72,10 @@ class SingleDiffusionPipeline(DiffusionPipeline):
             latent = self.scheduler.step(noise_pred, t, latent).prev_sample
             latents.append(latent)
         
-        return latents, text_embeddings
+        return latents
     
    
-    
     def create_text_embeddings(self, prompt, batch_size=1):
-        # batch_size = self.batch_size
-        
         text_input = self.tokenizer(
             prompt,
             padding="max_length",
@@ -87,8 +99,4 @@ class SingleDiffusionPipeline(DiffusionPipeline):
         text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
         
         return text_embeddings
-    
-    
-    
-    
     

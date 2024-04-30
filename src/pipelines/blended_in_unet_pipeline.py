@@ -20,6 +20,10 @@ class BlendedInUnetPipeline(DiffusionPipeline):
         prompt_1 = config["prompt_1"]
         prompt_2 = config["prompt_2"]
         timesteps = config["timesteps"]
+        height = config["height"]
+        width = config["width"]
+        latent_scale = config["latent_scale"]
+        
         self.scheduler.set_timesteps(timesteps)
         scheduler_1 = UniPCMultistepScheduler().from_config(self.scheduler.config)
         scheduler_2 = UniPCMultistepScheduler().from_config(self.scheduler.config)
@@ -40,33 +44,25 @@ class BlendedInUnetPipeline(DiffusionPipeline):
             scheduler=scheduler_2
         ).to(self.device)
         
-        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator)
-        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator)
+        latent_shape = (1, self.unet_base.config.in_channels, height // latent_scale, width // latent_scale)
+        base_latent = torch.randn(latent_shape, generator=generator, device=self.device)
+        base_latent = base_latent * self.scheduler.init_noise_sigma
+        base_latent = base_latent.to(self.device)
+       
+        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
+        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
         
-        batch_size = 1 
-        latents = []
-        
-        # latent_shape = (batch_size, self.unet_blend.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
-        # latent = torch.randn(latent_shape, generator=generator, device=self.device)
-        # # latent = torch.randn(latent_shape, generator=generator)
-        # latent = latent * self.scheduler.init_noise_sigma
-        # latent = latent.to(self.device)
-        
-        # Instead of using another random latent, for the blending phase we use
-        # the first latent from the first prompt, this results in a generated
-        # image with the same "shape" as the first prompt but with the features
-        # of the second.
-        latents.append(prompt_1_latents[0])
-        
-        blend_latents = self.reverse_blend_unet(config, latents, prompt_1_embeddings, prompt_2_embeddings)
+        blend_latents = self.reverse(config, base_latent, prompt_1_embeddings, prompt_2_embeddings)
         
         return prompt_1_latents, prompt_2_latents, blend_latents
         
         
-    def reverse_blend_unet(self, config, latents, encoder_hidden_states, decoder_hidden_states):
-        latent = latents[0]
-        
+    def reverse(self, config, base_latent, encoder_hidden_states, decoder_hidden_states):
+        latents = []
+        latents.append(base_latent)
+       
         for t in tqdm(self.scheduler.timesteps):
+            latent = latents[-1]
             # Expand the latents if we are doing classifier-free guidance to avoid doing two forward passes
             latent_model_input = torch.cat([latent] * 2)
 
@@ -89,38 +85,4 @@ class BlendedInUnetPipeline(DiffusionPipeline):
             latents.append(latent)
         
         return latents
-        
-    
-   
-    
-    def create_text_embeddings(self, prompt, batch_size=1):
-        # batch_size = self.batch_size
-        
-        text_input = self.tokenizer(
-            prompt,
-            padding="max_length",
-            max_length=self.tokenizer.model_max_length,
-            truncation=True,
-            return_tensors="pt"
-        )
-
-        with torch.no_grad():
-            text_embeddings = self.text_encoder(text_input.input_ids.to(self.device))[0]
-            
-        max_length = text_input.input_ids.shape[-1]
-        uncond_input = self.tokenizer(
-            [""] * batch_size,
-            padding="max_length",
-            max_length=max_length,
-            return_tensors="pt"
-        )
-        
-        uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(self.device))[0]
-        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
-        
-        return text_embeddings
-    
-    
-    
-    
     

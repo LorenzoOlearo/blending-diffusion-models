@@ -67,8 +67,6 @@ class BlendedAlternateUnetPipeline(DiffusionPipeline):
             latent_model_input = self.scheduler.scale_model_input(latent_model_input, timestep=t)
                 
             prompt_embedding = prompt_1_embeddings if index % 2 == 0 else prompt_2_embeddings
-            if index % 2 == 0: print("Prompt 1")
-            else: print("Prompt 2")
             
             with torch.no_grad():
                 noise_pred = self.unet(

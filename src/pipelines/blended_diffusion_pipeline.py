@@ -13,15 +13,14 @@ class BlendedDiffusionPipeline(DiffusionPipeline):
         "UniPCMultistepScheduler": UniPCMultistepScheduler
     }
     
-    
     def __init__(self, vae, tokenizer, text_encoder, unet, scheduler):
         super().__init__()
         
         self.register_modules(unet=unet, vae=vae, tokenizer=tokenizer, text_encoder=text_encoder, scheduler=scheduler)
 
+
     @torch.no_grad()
     def __call__(self, config, generator):
-        
         prompt_1 = config["prompt_1"]
         prompt_2 = config["prompt_2"]
         timesteps = config["timesteps"]
@@ -48,10 +47,15 @@ class BlendedDiffusionPipeline(DiffusionPipeline):
             scheduler=scheduler_2
         ).to(self.device)
         
-        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator)
-        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator)
+        latent_shape = (1, self.unet.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
+        base_latent = torch.randn(latent_shape, generator=generator, device=self.device)
+        base_latent = base_latent * self.scheduler.init_noise_sigma
+        base_latent = base_latent.to(self.device)
+       
+        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
+        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
         
-        blend_latents = self.reverse_limits(
+        blend_latents = self.reverse(
             base_latent=prompt_1_latents[from_timestep],
             text_embeddings=prompt_2_embeddings,
             from_timestep=from_timestep,
@@ -62,7 +66,7 @@ class BlendedDiffusionPipeline(DiffusionPipeline):
         return prompt_1_latents, prompt_2_latents, blend_latents
         
         
-    def reverse_limits(self, base_latent, text_embeddings, from_timestep, to_timestep, guidance_scale):
+    def reverse(self, base_latent, text_embeddings, from_timestep, to_timestep, guidance_scale):
         latents = []
         latents.append(base_latent)
         

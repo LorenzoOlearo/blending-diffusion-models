@@ -21,6 +21,9 @@ class BlendedInterpolatedPromptsPipeline(DiffusionPipeline):
         prompt_1 = config["prompt_1"]
         prompt_2 = config["prompt_2"]
         timesteps = config["timesteps"]
+        height = config["height"]
+        width = config["width"]
+        latent_scale = config["latent_scale"]
         interpolation_scale = config["blended_interpolated_prompts_scale"]
         
         self.scheduler.set_timesteps(timesteps)
@@ -56,16 +59,19 @@ class BlendedInterpolatedPromptsPipeline(DiffusionPipeline):
             scheduler=scheduler_blend
         ).to(self.device)
         
-        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator)
-        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator)
+        latent_shape = (1, self.unet.config.in_channels, height // latent_scale, width // latent_scale)
+        base_latent = torch.randn(latent_shape, generator=generator, device=self.device)
+        base_latent = base_latent * self.scheduler.init_noise_sigma
+        base_latent = base_latent.to(self.device)
+       
+        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
+        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
         blend_latents, _ = pipeline_blend(None, config, generator, prompt_embeddings=blended_prompts, base_latent=prompt_1_latents[0])
         
         return prompt_1_latents, prompt_2_latents, blend_latents
     
     
     def create_text_embeddings(self, prompt, batch_size=1):
-        # batch_size = self.batch_size
-        
         text_input = self.tokenizer(
             prompt,
             padding="max_length",
@@ -89,6 +95,4 @@ class BlendedInterpolatedPromptsPipeline(DiffusionPipeline):
         text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
         
         return text_embeddings
-    
-    
     

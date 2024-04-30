@@ -79,7 +79,7 @@ def main():
                 scheduler=scheduler
             ).to(device)
         else:
-            raise ValueError(f"Method {blend_method} not recognized. Available methods: blended_diffusion, blended_in_unet, blended_interpolated_prompts")
+            raise ValueError(f"Method {blend_method} not recognized. Available methods: blended_diffusion, blended_in_unet, blended_interpolated_prompts, blended_alternate_unet")
         
         # TEMPORARY: batch_size should be implemented from the latent dimension
         output_paths = []
