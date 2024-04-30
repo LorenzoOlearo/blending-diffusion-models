@@ -142,6 +142,8 @@ def make_blending_batch_grid(output_paths, blend_method, config):
         interpolation_scale = config["blended_interpolated_prompts_scale"]
         output_path = os.path.join(output_path, str(interpolation_scale))
         output_path = os.path.join(output_path, f"{blend_method}-batch_grid.png")
+    elif blend_method == "blended_switch_unet":
+        output_path = os.path.join(output_path, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")
     else:
         raise ValueError(f"Method {blend_method} not recognized.")
        

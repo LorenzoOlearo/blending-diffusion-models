@@ -2,7 +2,7 @@
     "seeds": [21, 314, 561, 41041, 9746347772161],
     "prompt_1": "lion",
     "prompt_2": "cat",
-    "blend_methods": ["blended_diffusion", "blended_in_unet, blended_interpolated_prompts"],
+    "blend_methods": ["blended_diffusion", "blended_in_unet", "blended_interpolated_prompts"],
     "timesteps": 25,
     "scheduler": "UniPCMultistepScheduler",
     "model_id": "CompVis/stable-diffusion-v1-4",

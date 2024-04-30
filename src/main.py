@@ -16,6 +16,7 @@ import utils as utils
 from pipelines.blended_diffusion_pipeline import BlendedDiffusionPipeline
 from pipelines.blended_in_unet_pipeline import BlendedInUnetPipeline
 from pipelines.blended_interpolated_prompts_pipeline import BlendedInterpolatedPromptsPipeline
+from pipelines.blended_switch_unet_pipeline import BlendedSwitchUnetPipeline
 from models.blended_unet import BlendedUNet2DConditionModel
 
 
@@ -63,6 +64,15 @@ def main():
         elif blend_method == "blended_interpolated_prompts":
             print("Initializing Blended Interpolated Prompts Pipeline")
             pipeline = BlendedInterpolatedPromptsPipeline(
+                vae=vae,
+                tokenizer=tokenizer,
+                text_encoder=text_encoder,
+                unet=unet,
+                scheduler=scheduler
+            ).to(device)
+        elif blend_method == "blended_switch_unet":
+            print("Initializing Blended Switch UNet Pipeline")
+            pipeline = BlendedSwitchUnetPipeline(
                 vae=vae,
                 tokenizer=tokenizer,
                 text_encoder=text_encoder,
