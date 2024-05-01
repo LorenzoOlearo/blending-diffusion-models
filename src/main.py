@@ -106,7 +106,7 @@ def main():
             )
             
             utils.save_configuration(args.config_path, output_path)
-            
+           
         plots.make_blending_batch_grid(output_paths, blend_method, config) 
     
     
