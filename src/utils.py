@@ -45,7 +45,7 @@ def make_output_dir(seed, config, blend_method, overwrite):
     output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
     output_path = os.path.join(output_path, blend_method)
     if blend_method == "blended_diffusion":
-        output_path = os.path.join(output_path, f"[from_{from_timestep}]-[to_{to_timestep}]")
+        output_path = os.path.join(output_path, f"from_{from_timestep}-to_{to_timestep}")
         output_path = os.path.join(output_path, str(seed))
         output_path = os.path.join(output_path, f"[{blend_method}]-[from_{from_timestep}]-[to_{to_timestep}]-[{scheduler_name}]-[{model_id}]")  
     elif blend_method == "blended_in_unet":
@@ -53,6 +53,9 @@ def make_output_dir(seed, config, blend_method, overwrite):
         output_path = os.path.join(output_path, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")  
     elif blend_method == "blended_interpolated_prompts":
         interpolation_scale = config["blended_interpolated_prompts_scale"]
+        interpolation_scale = str(interpolation_scale).replace(".", "-")
+        additional_parameters_string = f"scale_{interpolation_scale}"
+        output_path = os.path.join(output_path, additional_parameters_string)
         output_path = os.path.join(output_path, str(interpolation_scale))
         output_path = os.path.join(output_path, str(seed))
         output_path = os.path.join(output_path, f"[{blend_method}]-[scale_{interpolation_scale}]-[{scheduler_name}]-[{model_id}]-[p1_{timesteps}]-[p2_{timesteps}]")
