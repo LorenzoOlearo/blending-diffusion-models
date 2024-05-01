@@ -90,24 +90,26 @@ def main():
             generator = torch.Generator(device=device).manual_seed(seed)
             # generator = torch.manual_seed(seed)
         
-            prompt_1_latents, prompt_2_latents, blend_latents = pipeline(config=config, generator=generator)
+        #     prompt_1_latents, prompt_2_latents, blend_latents = pipeline(config=config, generator=generator)
         
-            prompt_1_images = utils.decode_images(prompt_1_latents, vae)
-            prompt_2_images = utils.decode_images(prompt_2_latents, vae)
-            blend_images = utils.decode_images(blend_latents, vae)
+        #     prompt_1_images = utils.decode_images(prompt_1_latents, vae)
+        #     prompt_2_images = utils.decode_images(prompt_2_latents, vae)
+        #     blend_images = utils.decode_images(blend_latents, vae)
             
-            plots.save_all_outputs(
-                config=config,
-                prompt_1_images=prompt_1_images,
-                prompt_2_images=prompt_2_images,
-                blend_images=blend_images,
-                output_path=output_path, 
-                blend_method=blend_method
-            )
+        #     plots.save_all_outputs(
+        #         config=config,
+        #         prompt_1_images=prompt_1_images,
+        #         prompt_2_images=prompt_2_images,
+        #         blend_images=blend_images,
+        #         output_path=output_path, 
+        #         blend_method=blend_method
+        #     )
             
-            utils.save_configuration(args.config_path, output_path)
+        #     utils.save_configuration(args.config_path, output_path)
            
-        plots.make_blending_batch_grid(output_paths, blend_method, config) 
+        # plots.make_blending_batch_grid(output_paths, blend_method, config) 
+        
+    plots.make_blend_comparison_grid(config)
     
     
 if __name__ == "__main__":
