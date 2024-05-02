@@ -4,10 +4,7 @@ from PIL import Image
 import numpy as np
 import os
 
-
-FINAL_IMAGE_PREFIX = "final"
-FINAL_IMAGE_BLEND_PREFIX = "blend"
-INTERMEDIATE_IMAGE_PREFIX = "intermediate"
+import utils
 
 
 def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, blend_method, output_path):
@@ -18,7 +15,7 @@ def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, ble
     final_image_2 = prompt_2_images[-1]
     final_image_blend = blend_images[-1]
    
-    additional_parameters = get_additional_parameters_string(config, blend_method)
+    additional_parameters = utils.get_additional_parameters(config, blend_method)
     
     final_image_1.save(f"{output_path}/{prompt_1}.png")
     final_image_2.save(f"{output_path}/{prompt_2}.png")
@@ -43,24 +40,6 @@ def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, ble
     )
     
     
-def get_additional_parameters_string(config, blend_method):
-    additional_parameters_string =  None
-    if blend_method == "blended_diffusion":
-        from_timestep = config["from_timestep"]
-        to_timestep = config["to_timestep"]
-        additional_parameters_string = f"from_{from_timestep}-to_{to_timestep}"
-    elif blend_method == "blended_in_unet":
-        pass
-    elif blend_method == "blended_interpolated_prompts":
-        interpolation_scale = config["blended_interpolated_prompts_scale"]
-        interpolation_scale = str(interpolation_scale).replace(".", "-")
-        additional_parameters_string = f"scale_{interpolation_scale}"
-    elif blend_method == "blended_alternate_unet":
-        pass
-    else: 
-        raise ValueError(f"Method {blend_method} not recognized.")
-    
-    return additional_parameters_string
 
 
 def make_animation(decoded_images: list, prompt: str, output_path: str):
@@ -113,7 +92,7 @@ def make_blending_batch_grid(output_paths, blend_method, config):
     model_id = config["model_id"].replace("/", "-")
     prompt_1 = config["prompt_1"]
     prompt_2 = config["prompt_2"]
-    additional_parameters = get_additional_parameters_string(config, blend_method)
+    additional_parameters = utils.get_additional_parameters(config, blend_method)
    
     rows = [] 
     for folder in output_paths:
@@ -176,7 +155,7 @@ def make_blend_comparison_grid(config):
     
     grid = [] 
     for blend_method in blend_methods:
-        additional_parameters = get_additional_parameters_string(config, blend_method)
+        additional_parameters = utils.get_additional_parameters(config, blend_method)
         input_folder = "./out"
         input_folder = os.path.join(input_folder, f"{prompt_1}-BLEND-{prompt_2}")
         input_folder = os.path.join(input_folder, blend_method)

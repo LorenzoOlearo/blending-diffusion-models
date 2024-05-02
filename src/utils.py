@@ -32,37 +32,44 @@ def read_config(config_path):
     return config
 
 
+def get_additional_parameters(config, blend_method):
+    additional_parameters_string =  None
+    if blend_method == "blended_diffusion":
+        from_timestep = config["from_timestep"]
+        to_timestep = config["to_timestep"]
+        additional_parameters_string = f"from_{from_timestep}-to_{to_timestep}"
+    elif blend_method == "blended_in_unet":
+        pass
+    elif blend_method == "blended_interpolated_prompts":
+        interpolation_scale = config["blended_interpolated_prompts_scale"]
+        interpolation_scale = str(interpolation_scale).replace(".", "-")
+        additional_parameters_string = f"scale_{interpolation_scale}"
+    elif blend_method == "blended_alternate_unet":
+        pass
+    else: 
+        raise ValueError(f"Method {blend_method} not recognized.")
+    
+    return additional_parameters_string
+
+
 def make_output_dir(seed, config, blend_method, overwrite):
     scheduler_name = config["scheduler"]
     model_id = config["model_id"].replace("/", "-")
     prompt_1 = config["prompt_1"]
     prompt_2 = config["prompt_2"]
-    timesteps = config["timesteps"]
-    from_timestep = config["from_timestep"]
-    to_timestep = config["to_timestep"]
+    
+    additional_parameters = get_additional_parameters(config, blend_method)
     
     output_path = "./out"
     output_path = os.path.join(output_path, f"{prompt_1}-BLEND-{prompt_2}")
     output_path = os.path.join(output_path, blend_method)
-    if blend_method == "blended_diffusion":
-        output_path = os.path.join(output_path, f"from_{from_timestep}-to_{to_timestep}")
-        output_path = os.path.join(output_path, str(seed))
-        output_path = os.path.join(output_path, f"[{blend_method}]-[from_{from_timestep}-to_{to_timestep}]-[{scheduler_name}]-[{model_id}]")  
-    elif blend_method == "blended_in_unet":
-        output_path = os.path.join(output_path, str(seed))
-        output_path = os.path.join(output_path, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]")  
-    elif blend_method == "blended_interpolated_prompts":
-        interpolation_scale = config["blended_interpolated_prompts_scale"]
-        interpolation_scale = str(interpolation_scale).replace(".", "-")
-        additional_parameters_string = f"scale_{interpolation_scale}"
-        output_path = os.path.join(output_path, additional_parameters_string)
-        output_path = os.path.join(output_path, str(seed))
-        output_path = os.path.join(output_path, f"[{blend_method}]-[{additional_parameters_string}]-[{scheduler_name}]-[{model_id}]")
-    elif blend_method == "blended_alternate_unet":
-        output_path = os.path.join(output_path, str(seed))
-        output_path = os.path.join(output_path, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]")
+    if additional_parameters is not None:
+        output_path = os.path.join(output_path, additional_parameters)
+    output_path = os.path.join(output_path, str(seed))
+    if additional_parameters is not None:
+        output_path = os.path.join(output_path, f"[{blend_method}]-[{additional_parameters}]-[{scheduler_name}]-[{model_id}]")
     else:
-        raise ValueError(f"Method {blend_method} not recognized.")
+        output_path = os.path.join(output_path, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]")
    
     if os.path.exists(output_path) and not overwrite:
         overwrite = input(f"Output directory {output_path} already exists. Do you want to overwrite it? (y/N): ")
@@ -85,9 +92,6 @@ def make_output_dir(seed, config, blend_method, overwrite):
 
 
 def save_configuration(config_path, output_path):
-    
-    # os.system(f"cp {args.config_path} {output_path}/config.json")
-    
     with open("config.json", "r") as f:
         config = json.load(f)
         
