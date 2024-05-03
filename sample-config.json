@@ -1,4 +1,5 @@
 {
+    "device": "cuda:1",
     "seeds": [21, 314, 561, 41041, 9746347772161],
     "prompt_1": "lion",
     "prompt_2": "cat",
@@ -12,5 +13,6 @@
     "from_timestep": 10, 
     "to_timestep": 25,
     "latent_scale": 8,
-    "blended_interpolated_prompts_scale": 0.5
+    "blended_interpolated_prompts_scale": 0.5,
+    "same_base_latent": true
 }

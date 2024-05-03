@@ -28,9 +28,8 @@ def main():
     parser.add_argument("--overwrite", action="store_true", help="Overwrite the output directory if it exists")
     args = parser.parse_args()
     
-    device = "cuda:1"
-    
     config = utils.read_config(args.config_path)
+    device = config["device"]
     
     vae = AutoencoderKL.from_pretrained(config["model_id"], subfolder="vae")
     tokenizer = CLIPTokenizer.from_pretrained(config["model_id"], subfolder="tokenizer")
