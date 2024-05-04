@@ -1,6 +1,6 @@
 {
     "device": "cuda:1",
-    "seeds": [21, 314, 561, 41041, 9746347772161],
+    "seeds": [21, 314, 561, 41041, 9746347772161, 1007, 11051999, 27092000, 20071969, 4101957],
     "prompt_1": "lion",
     "prompt_2": "cat",
     "blend_methods": ["blended_diffusion", "blended_in_unet", "blended_interpolated_prompts", "blended_alternate_unet"],

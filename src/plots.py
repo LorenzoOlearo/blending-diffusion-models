@@ -7,10 +7,11 @@ import os
 import utils
 
 
-def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, blend_method, output_path):
+def save_all_outputs(config, seed, prompt_1_images, prompt_2_images, blend_images, blend_method, output_path):
     prompt_1 = config["prompt_1"]
     prompt_2 = config["prompt_2"]
     timesteps = config["timesteps"]
+    
     final_image_1 = prompt_1_images[-1]
     final_image_2 = prompt_2_images[-1]
     final_image_blend = blend_images[-1]
@@ -19,7 +20,10 @@ def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, ble
     
     final_image_1.save(f"{output_path}/{prompt_1}.png")
     final_image_2.save(f"{output_path}/{prompt_2}.png")
-    final_image_blend.save(f"{output_path}/{prompt_1}-BLEND-{prompt_2}.png")
+    if additional_parameters is not None:
+        final_image_blend.save(f"{output_path}/{prompt_1}-BLEND-{prompt_2}-{blend_method}-{seed}-{additional_parameters}.png")
+    else:
+        final_image_blend.save(f"{output_path}/{prompt_1}-BLEND-{prompt_2}-{blend_method}-{seed}.png")
     
     make_animation(
         decoded_images=blend_images,
@@ -40,8 +44,6 @@ def save_all_outputs(config, prompt_1_images, prompt_2_images, blend_images, ble
     )
     
     
-
-
 def make_animation(decoded_images: list, prompt: str, output_path: str):
     plt.close()
     fig, ax = plt.subplots()
@@ -96,9 +98,14 @@ def make_blending_batch_grid(output_paths, blend_method, config):
    
     rows = [] 
     for folder in output_paths:
+        # TEMPORARY: needs rework
+        seed = folder.split("/")[-2]
         image_1 = plt.imread(os.path.join(folder, f"{prompt_1}.png"))
         image_2 = plt.imread(os.path.join(folder, f"{prompt_2}.png"))
-        blend_image = plt.imread(os.path.join(folder, f"{prompt_1}-BLEND-{prompt_2}.png"))
+        if additional_parameters is not None:
+            blend_image = plt.imread(os.path.join(folder, f"{prompt_1}-BLEND-{prompt_2}-{blend_method}-{seed}-{additional_parameters}.png"))
+        else:
+            blend_image = plt.imread(os.path.join(folder, f"{prompt_1}-BLEND-{prompt_2}-{blend_method}-{seed}.png"))
         rows.append([image_1, blend_image, image_2])
         
     plt.close()
@@ -170,15 +177,17 @@ def make_blend_comparison_grid(config):
             input_folder = os.path.join(input_folder, str(seed))
             if additional_parameters is not None:
                 input_folder = os.path.join(input_folder, f"[{blend_method}]-[{additional_parameters}]-[{scheduler_name}]-[{model_id}]")
+                blend_column.append(plt.imread(os.path.join(input_folder, f"{prompt_1}-BLEND-{prompt_2}-{blend_method}-{seed}-{additional_parameters}.png")))
             else:
                 input_folder = os.path.join(input_folder, f"[{blend_method}]-[{scheduler_name}]-[{model_id}]")
-            blend_column.append(plt.imread(os.path.join(input_folder, f"{prompt_1}-BLEND-{prompt_2}.png")))
+                blend_column.append(plt.imread(os.path.join(input_folder, f"{prompt_1}-BLEND-{prompt_2}-{blend_method}-{seed}.png")))
+            
             images_1.append(plt.imread(os.path.join(input_folder, f"{prompt_1}.png")))
             images_2.append(plt.imread(os.path.join(input_folder, f"{prompt_2}.png")))
         grid.append(blend_column)
         
     plt.close()
-    fig, axs = plt.subplots(len(seeds), len(blend_methods)+2, figsize=(30, 30))
+    fig, axs = plt.subplots(len(seeds), len(blend_methods)+2, figsize=(30, 40))
     fig.suptitle(f'{prompt_1}-BLEND-{prompt_2}', fontsize=20)
     
     for i, seed in enumerate(seeds):
@@ -198,7 +207,7 @@ def make_blend_comparison_grid(config):
     
     save_path = "./out"
     save_path = os.path.join(save_path, f"{prompt_1}-BLEND-{prompt_2}")
-    save_path = os.path.join(save_path, "comparison")
+    save_path = os.path.join(save_path, f"{prompt_1}-BLEND-{prompt_2}-comparison")
     
     plt.savefig(save_path)
     

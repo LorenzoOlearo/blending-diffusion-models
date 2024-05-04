@@ -97,6 +97,7 @@ def main():
             
             plots.save_all_outputs(
                 config=config,
+                seed=seed,
                 prompt_1_images=prompt_1_images,
                 prompt_2_images=prompt_2_images,
                 blend_images=blend_images,
