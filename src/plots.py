@@ -148,17 +148,17 @@ def make_blend_comparison_grid(config):
     timesteps = config["timesteps"]
     
     # Set the order of the blend methods 
-    blend_methods = ["blended_diffusion", "blended_in_unet", "blended_interpolated_prompts", "blended_alternate_unet"]
+    blend_methods = ["SWITCH", "UNET", "TEXTUAL", "ALTERNATE"]
    
     # Remove the blend methods that are not in the config 
-    if "blended_diffusion" not in blend_methods:
-        blend_methods.remove("blended_diffusion")
-    if "blended_in_unet" not in blend_methods:
-        blend_methods.remove("blended_in_unet")
-    if "blended_interpolated_prompts" not in blend_methods:
-        blend_methods.remove("blended_interpolated_prompts")
-    if "blended_alternate_unet" not in blend_methods:
-        blend_methods.remove("blended_alternate_unet")
+    if "SWITCH" not in blend_methods:
+        blend_methods.remove("SWITCH")
+    if "UNET" not in blend_methods:
+        blend_methods.remove("UNET")
+    if "TEXTUAL" not in blend_methods:
+        blend_methods.remove("TEXTUAL")
+    if "ALTERNATE" not in blend_methods:
+        blend_methods.remove("ALTERNATE")
     
     grid = [] 
     for blend_method in blend_methods:

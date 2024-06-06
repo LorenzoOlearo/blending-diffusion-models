@@ -13,10 +13,10 @@ from diffusers import AutoencoderKL, UNet2DConditionModel, UniPCMultistepSchedul
 
 import plots as plots
 import utils as utils
-from pipelines.blended_diffusion_pipeline import BlendedDiffusionPipeline
-from pipelines.blended_in_unet_pipeline import BlendedInUnetPipeline
-from pipelines.blended_interpolated_prompts_pipeline import BlendedInterpolatedPromptsPipeline
-from pipelines.blended_alternate_unet_prompts_pipeline import BlendedAlternateUnetPipeline
+from pipelines.SWITCH_pipeline import SwitchPipeline
+from pipelines.UNET_pipeline import UnetPipeline
+from pipelines.TEXTUAL_pipeline import TextualPipeline
+from pipelines.ALTERNATE_pipeline import AlternatePipeline
 from models.blended_unet import BlendedUNet2DConditionModel
 
 
@@ -40,18 +40,18 @@ def main():
     scheduler = UniPCMultistepScheduler.from_pretrained(config["model_id"], subfolder="scheduler")
  
     for blend_method in config["blend_methods"]:
-        if blend_method == "blended_diffusion":
+        if blend_method == "SWITCH":
             print("Initializing Blended Diffusion Pipeline")
-            pipeline = BlendedDiffusionPipeline(
+            pipeline = SwitchPipeline(
                 vae=vae,
                 tokenizer=tokenizer,
                 text_encoder=text_encoder,
                 unet=unet,
                 scheduler=scheduler
             ).to(device)
-        elif blend_method == "blended_in_unet":
+        elif blend_method == "UNET":
             print("Initializing Blended in UNet Pipeline")
-            pipeline = BlendedInUnetPipeline(
+            pipeline = UnetPipeline(
                 vae=vae,
                 tokenizer=tokenizer,
                 text_encoder=text_encoder,
@@ -59,18 +59,18 @@ def main():
                 unet_blend=unet_blend,
                 scheduler=scheduler
             ).to(device)
-        elif blend_method == "blended_interpolated_prompts":
+        elif blend_method == "TEXTUAL":
             print("Initializing Blended Interpolated Prompts Pipeline")
-            pipeline = BlendedInterpolatedPromptsPipeline(
+            pipeline = TextualPipeline(
                 vae=vae,
                 tokenizer=tokenizer,
                 text_encoder=text_encoder,
                 unet=unet,
                 scheduler=scheduler
             ).to(device)
-        elif blend_method == "blended_alternate_unet":
+        elif blend_method == "ALTERNATE":
             print("Initializing Blended Alternate UNet Pipeline")
-            pipeline = BlendedAlternateUnetPipeline(
+            pipeline = AlternatePipeline(
                 vae=vae,
                 tokenizer=tokenizer,
                 text_encoder=text_encoder,
@@ -78,7 +78,7 @@ def main():
                 scheduler=scheduler
             ).to(device)
         else:
-            raise ValueError(f"Method {blend_method} not recognized. Available methods: blended_diffusion, blended_in_unet, blended_interpolated_prompts, blended_alternate_unet")
+            raise ValueError(f"Method {blend_method} not recognized. Available methods: SWITCH, UNET, TEXTUAL, ALTERNATE")
         
         # TEMPORARY: batch_size should be implemented from the latent dimension
         output_paths = []

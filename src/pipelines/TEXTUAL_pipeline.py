@@ -6,7 +6,7 @@ from diffusers import DiffusionPipeline, UniPCMultistepScheduler
 from pipelines.single_diffusion_pipeline import SingleDiffusionPipeline
 
 
-class BlendedInterpolatedPromptsPipeline(DiffusionPipeline):
+class TextualPipeline(DiffusionPipeline):
     
     scheduler_map = {
         "UniPCMultistepScheduler": UniPCMultistepScheduler
@@ -24,7 +24,7 @@ class BlendedInterpolatedPromptsPipeline(DiffusionPipeline):
         height = config["height"]
         width = config["width"]
         latent_scale = config["latent_scale"]
-        interpolation_scale = config["blended_interpolated_prompts_scale"]
+        interpolation_scale = config["TEXTUAL_scale"]
         
         self.scheduler.set_timesteps(timesteps)
         scheduler_1 = UniPCMultistepScheduler().from_config(self.scheduler.config)

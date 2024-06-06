@@ -3,7 +3,7 @@
     "seeds": [21, 314, 561, 41041, 9746347772161, 1007, 11051999, 27092000, 20071969, 4101957],
     "prompt_1": "lion",
     "prompt_2": "cat",
-    "blend_methods": ["blended_diffusion", "blended_in_unet", "blended_interpolated_prompts", "blended_alternate_unet"],
+    "blend_methods": ["SWITCH", "UNET", "TEXTUAL", "ALTERNATE"],
     "timesteps": 25,
     "scheduler": "UniPCMultistepScheduler",
     "model_id": "CompVis/stable-diffusion-v1-4",
@@ -13,6 +13,6 @@
     "from_timestep": 10, 
     "to_timestep": 25,
     "latent_scale": 8,
-    "blended_interpolated_prompts_scale": 0.5,
+    "TEXTUAL_scale": 0.5,
     "same_base_latent": true
 }

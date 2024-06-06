@@ -34,17 +34,17 @@ def read_config(config_path):
 
 def get_additional_parameters(config, blend_method):
     additional_parameters_string =  None
-    if blend_method == "blended_diffusion":
+    if blend_method == "SWITCH":
         from_timestep = config["from_timestep"]
         to_timestep = config["to_timestep"]
         additional_parameters_string = f"from_{from_timestep}-to_{to_timestep}"
-    elif blend_method == "blended_in_unet":
+    elif blend_method == "UNET":
         pass
-    elif blend_method == "blended_interpolated_prompts":
-        interpolation_scale = config["blended_interpolated_prompts_scale"]
+    elif blend_method == "TEXTUAL":
+        interpolation_scale = config["TEXTUAL_scale"]
         interpolation_scale = str(interpolation_scale).replace(".", "-")
         additional_parameters_string = f"scale_{interpolation_scale}"
-    elif blend_method == "blended_alternate_unet":
+    elif blend_method == "ALTERNATE":
         pass
     else: 
         raise ValueError(f"Method {blend_method} not recognized.")

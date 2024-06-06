@@ -5,7 +5,7 @@ from diffusers import DiffusionPipeline, UniPCMultistepScheduler
 from pipelines.single_diffusion_pipeline import SingleDiffusionPipeline
 
 
-class BlendedInUnetPipeline(DiffusionPipeline):
+class UnetPipeline(DiffusionPipeline):
     
     scheduler_map = {
         "UniPCMultistepScheduler": UniPCMultistepScheduler
