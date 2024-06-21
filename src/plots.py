@@ -48,7 +48,7 @@ def make_animation(decoded_images: list, prompt: str, output_path: str):
     plt.close()
     fig, ax = plt.subplots()
 
-    plt.title(prompt[0])
+    plt.title(prompt)
     ax.set_yticklabels([])
     ax.set_xticklabels([])
     ax.yaxis.set_visible(False)
@@ -61,7 +61,7 @@ def make_animation(decoded_images: list, prompt: str, output_path: str):
             ax.imshow(decoded_images[i])
         ims.append([im])
 
-    ani = animation.ArtistAnimation(fig, ims, interval=250, blit=True, repeat_delay=2000)
+    ani = animation.ArtistAnimation(fig, ims, interval=350, blit=True, repeat_delay=5000)
     
     save_path = f"{output_path}/denoising-{prompt}.gif"
     ani.save(save_path)
