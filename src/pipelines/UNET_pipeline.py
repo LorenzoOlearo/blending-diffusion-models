@@ -50,7 +50,10 @@ class UnetPipeline(DiffusionPipeline):
         base_latent = base_latent.to(self.device)
        
         prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
-        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
+        if config["same_base_latent"] == True:
+            prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
+        else:
+            prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator)
         
         blend_latents = self.reverse(config, base_latent, prompt_1_embeddings, prompt_2_embeddings)
         

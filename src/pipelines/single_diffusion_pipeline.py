@@ -25,9 +25,9 @@ class SingleDiffusionPipeline(DiffusionPipeline):
         batch_size = 1
         
         latents = []
-        if same_base_latent == True and base_latent is not None:
+        if base_latent is not None:
             latents.append(base_latent)
-        elif same_base_latent == False:
+        else:
             latent_shape = (batch_size, self.unet.config.in_channels, height // latent_scale, width // latent_scale)
             latent = torch.randn(latent_shape, generator=generator, device=self.device)
             latent = latent * self.scheduler.init_noise_sigma

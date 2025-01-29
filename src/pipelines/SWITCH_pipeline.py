@@ -51,9 +51,13 @@ class SwitchPipeline(DiffusionPipeline):
         base_latent = torch.randn(latent_shape, generator=generator, device=self.device)
         base_latent = base_latent * self.scheduler.init_noise_sigma
         base_latent = base_latent.to(self.device)
-       
+        
         prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
-        prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
+        if config["same_base_latent"] == True:
+            prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
+        else:
+            prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator)
+            
         
         blend_latents = self.reverse(
             base_latent=prompt_1_latents[from_timestep],
