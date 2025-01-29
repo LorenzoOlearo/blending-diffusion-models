@@ -148,7 +148,7 @@ def make_blend_comparison_grid(config):
     timesteps = config["timesteps"]
     
     # Set the order of the blend methods 
-    blend_methods = ["SWITCH", "UNET", "TEXTUAL", "ALTERNATE"]
+    blend_methods = ["TEXTUAL", "SWITCH", "ALTERNATE", "UNET"]
    
     # Remove the blend methods that are not in the config 
     if "SWITCH" not in blend_methods:
