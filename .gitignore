@@ -1,4 +1,6 @@
 .vscode
 out/
 src/__pycache__/
+src/pipelines/__pycache__/
+src/models/__pycache__/
 config.json
