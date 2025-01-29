@@ -2,9 +2,8 @@ import torch
 from tqdm.auto import tqdm
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler
 
-import plots as plots
-import utils as utils
 from pipelines.single_diffusion_pipeline import SingleDiffusionPipeline
+from utils import generate_latent
 
 
 class SwitchPipeline(DiffusionPipeline):
@@ -30,6 +29,7 @@ class SwitchPipeline(DiffusionPipeline):
         self.scheduler.set_timesteps(timesteps)
         scheduler_1 = UniPCMultistepScheduler().from_config(self.scheduler.config)
         scheduler_2 = UniPCMultistepScheduler().from_config(self.scheduler.config)
+        scheduler_switch = UniPCMultistepScheduler().from_config(self.scheduler.config)
         
         pipeline_1 = SingleDiffusionPipeline(
             vae=self.vae,
@@ -47,20 +47,34 @@ class SwitchPipeline(DiffusionPipeline):
             scheduler=scheduler_2
         ).to(self.device)
         
-        latent_shape = (1, self.unet.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
-        base_latent = torch.randn(latent_shape, generator=generator, device=self.device)
-        base_latent = base_latent * self.scheduler.init_noise_sigma
-        base_latent = base_latent.to(self.device)
+        pipeline_switch_initial = SingleDiffusionPipeline(
+            vae=self.vae,
+            tokenizer=self.tokenizer,
+            text_encoder=self.text_encoder,
+            unet=self.unet,
+            scheduler=scheduler_switch
+        ).to(self.device)
         
-        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
+        base_latent = generate_latent(config, generator, self.unet, self.scheduler, self.device)
+        
         if config["same_base_latent"] == True:
+            prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
             prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
+            base_latent = prompt_1_latents[from_timestep]
         else:
+            prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
             prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator)
             
-        
+            # SWITCH is a bit different from the other pipelines, in the case in
+            # which the base_latent is not shared between the two prompts we
+            # need to create another temporary pipeline and save its latent at
+            # the time in which the switch is performed
+            initial_latents, _ = pipeline_switch_initial(prompt_1, config, generator) 
+            base_latent = initial_latents[from_timestep]
+            
+            
         blend_latents = self.reverse(
-            base_latent=prompt_1_latents[from_timestep],
+            base_latent=base_latent,
             text_embeddings=prompt_2_embeddings,
             from_timestep=from_timestep,
             to_timestep=to_timestep,

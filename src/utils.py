@@ -4,6 +4,14 @@ import shutil
 import torch
 from PIL import Image
 
+def generate_latent(config, generator, unet, scheduler, device):
+    latent_shape = (1, unet.config.in_channels, config["height"] // config["latent_scale"], config["width"] // config["latent_scale"])
+    latent = torch.randn(latent_shape, generator=generator, device=device)
+    latent = latent * scheduler.init_noise_sigma
+    latent = latent.to(device)
+    
+    return latent
+
 
 def decode_image(latent, vae):
     latent = 1 / 0.18215 * latent

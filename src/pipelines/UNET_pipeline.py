@@ -3,6 +3,7 @@ from tqdm.auto import tqdm
 from diffusers import DiffusionPipeline, UniPCMultistepScheduler
 
 from pipelines.single_diffusion_pipeline import SingleDiffusionPipeline
+from utils import generate_latent
 
 
 class UnetPipeline(DiffusionPipeline):
@@ -43,26 +44,37 @@ class UnetPipeline(DiffusionPipeline):
             unet=self.unet_base,
             scheduler=scheduler_2
         ).to(self.device)
-        
-        latent_shape = (1, self.unet_base.config.in_channels, height // latent_scale, width // latent_scale)
-        base_latent = torch.randn(latent_shape, generator=generator, device=self.device)
-        base_latent = base_latent * self.scheduler.init_noise_sigma
-        base_latent = base_latent.to(self.device)
        
-        prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
+        base_latent = generate_latent(config, generator, self.unet_base, self.scheduler, self.device) 
+        
         if config["same_base_latent"] == True:
+            prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
             prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator, base_latent=base_latent)
         else:
+            prompt_1_latents, prompt_1_embeddings = pipeline_1(prompt_1, config, generator, base_latent=base_latent)
             prompt_2_latents, prompt_2_embeddings = pipeline_2(prompt_2, config, generator)
         
-        blend_latents = self.reverse(config, base_latent, prompt_1_embeddings, prompt_2_embeddings)
+        blend_latents = self.reverse(
+            config=config,
+            encoder_hidden_states=prompt_1_embeddings,
+            decoder_hidden_states=prompt_2_embeddings,
+            generator=generator,
+            base_latent=base_latent
+        )
         
         return prompt_1_latents, prompt_2_latents, blend_latents
         
         
-    def reverse(self, config, base_latent, encoder_hidden_states, decoder_hidden_states):
+    def reverse(self, config, encoder_hidden_states, decoder_hidden_states, generator=None, base_latent=None):
         latents = []
-        latents.append(base_latent)
+        
+        if config["same_base_latent"] == True and base_latent is not None:
+            latents.append(base_latent)
+        elif config["same_base_latent"] == False and generator is not None:
+            base_latent = generate_latent(config, generator, self.unet_base, self.scheduler, self.device)
+            latents.append(base_latent)
+        else:
+            raise ValueError("base_latent or generator must be provided")
        
         for t in tqdm(self.scheduler.timesteps):
             latent = latents[-1]
