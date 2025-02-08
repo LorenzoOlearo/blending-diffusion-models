@@ -181,6 +181,7 @@ class BlendedUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoader
         sample_size: Optional[int] = None,
         in_channels: int = 4,
         out_channels: int = 4,
+        blend_ratio: float = 0.5,
         center_input_sample: bool = False,
         flip_sin_to_cos: bool = True,
         freq_shift: int = 0,
@@ -1055,6 +1056,7 @@ class BlendedUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoader
         timestep: Union[torch.Tensor, float, int],
         encoder_hidden_states: torch.Tensor,
         decoder_hidden_states: torch.Tensor,
+        blend_ratio: float,
         class_labels: Optional[torch.Tensor] = None,
         timestep_cond: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
@@ -1188,6 +1190,7 @@ class BlendedUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoader
 
         # 2. pre-process
         sample = self.conv_in(sample)
+        
 
         # 2.5 GLIGEN position net
         if cross_attention_kwargs is not None and cross_attention_kwargs.get("gligen", None) is not None:
@@ -1227,23 +1230,32 @@ class BlendedUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoader
             down_intrablock_additional_residuals = down_block_additional_residuals
             is_adapter = True
 
+        # BLEND: we need to balance the first prompt with the second one
+        # encoder_switch_block_index = round((blend_ratio * 2) * len(self.down_blocks))
+        
+        if blend_ratio > 0.5:
+            encoder_switch_block_index = round(((1 - blend_ratio)*2) * len(self.down_blocks))
+        else:
+            encoder_switch_block_index = len(self.down_blocks)
+        
         down_block_res_samples = (sample,)
-        for downsample_block in self.down_blocks:
+        for i, downsample_block in enumerate(self.down_blocks):
             if hasattr(downsample_block, "has_cross_attention") and downsample_block.has_cross_attention:
                 # For t2i-adapter CrossAttnDownBlock2D
                 additional_residuals = {}
                 if is_adapter and len(down_intrablock_additional_residuals) > 0:
                     additional_residuals["additional_residuals"] = down_intrablock_additional_residuals.pop(0)
-
+                # print(i, encoder_switch_block_index) 
                 sample, res_samples = downsample_block(
                     hidden_states=sample,
                     temb=emb,
-                    encoder_hidden_states=encoder_hidden_states,
+                    encoder_hidden_states=encoder_hidden_states if i <= encoder_switch_block_index else decoder_hidden_states,
                     attention_mask=attention_mask,
                     cross_attention_kwargs=cross_attention_kwargs,
                     encoder_attention_mask=encoder_attention_mask,
                     **additional_residuals,
                 )
+                    
             else:
                 sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
                 if is_adapter and len(down_intrablock_additional_residuals) > 0:
@@ -1269,7 +1281,7 @@ class BlendedUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoader
                 sample = self.mid_block(
                     sample,
                     emb,
-                    encoder_hidden_states=encoder_hidden_states,
+                    encoder_hidden_states=encoder_hidden_states if blend_ratio <= 0.5 else decoder_hidden_states,
                     attention_mask=attention_mask,
                     cross_attention_kwargs=cross_attention_kwargs,
                     encoder_attention_mask=encoder_attention_mask,
@@ -1289,6 +1301,12 @@ class BlendedUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoader
             sample = sample + mid_block_additional_residual
 
         # 5. up
+        # BLEND: we need to balance the first prompt with the second one
+        if blend_ratio < 0.5:
+            decoder_switch_block_index = round(blend_ratio * 2 * len(self.up_blocks))
+        else:
+            decoder_switch_block_index = len(self.up_blocks)
+        
         for i, upsample_block in enumerate(self.up_blocks):
             is_final_block = i == len(self.up_blocks) - 1
 
@@ -1301,16 +1319,31 @@ class BlendedUNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoader
                 upsample_size = down_block_res_samples[-1].shape[2:]
 
             if hasattr(upsample_block, "has_cross_attention") and upsample_block.has_cross_attention:
-                sample = upsample_block(
-                    hidden_states=sample,
-                    temb=emb,
-                    res_hidden_states_tuple=res_samples,
-                    encoder_hidden_states=decoder_hidden_states,
-                    cross_attention_kwargs=cross_attention_kwargs,
-                    upsample_size=upsample_size,
-                    attention_mask=attention_mask,
-                    encoder_attention_mask=encoder_attention_mask,
-                )
+                if i < decoder_switch_block_index and blend_ratio < 0.5:
+                    # print(f"i: {i}, decoder_switch_block_index: {decoder_switch_block_index}, ENCODER")
+                    sample = upsample_block(
+                        hidden_states=sample,
+                        temb=emb,
+                        res_hidden_states_tuple=res_samples,
+                        encoder_hidden_states=encoder_hidden_states,
+                        cross_attention_kwargs=cross_attention_kwargs,
+                        upsample_size=upsample_size,
+                        attention_mask=attention_mask,
+                        encoder_attention_mask=encoder_attention_mask,
+                    )
+                else: 
+                    # print(f"i: {i}, decoder_switch_block_index: {decoder_switch_block_index}, DECODER")
+                    sample = upsample_block(
+                        hidden_states=sample,
+                        temb=emb,
+                        res_hidden_states_tuple=res_samples,
+                        encoder_hidden_states=decoder_hidden_states,
+                        cross_attention_kwargs=cross_attention_kwargs,
+                        upsample_size=upsample_size,
+                        attention_mask=attention_mask,
+                        encoder_attention_mask=encoder_attention_mask,
+                    )
+                    
             else:
                 sample = upsample_block(
                     hidden_states=sample,

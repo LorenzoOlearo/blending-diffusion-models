@@ -25,7 +25,10 @@ class SwitchPipeline(DiffusionPipeline):
         timesteps = config["timesteps"]
         from_timestep = config["from_timestep"]
         to_timestep = config["to_timestep"]
-        
+        blend_ratio = config["blend_ratio"]
+
+        from_timestep = int(round(to_timestep * (1 - blend_ratio)))
+
         self.scheduler.set_timesteps(timesteps)
         scheduler_1 = UniPCMultistepScheduler().from_config(self.scheduler.config)
         scheduler_2 = UniPCMultistepScheduler().from_config(self.scheduler.config)

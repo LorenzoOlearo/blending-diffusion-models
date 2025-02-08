@@ -24,6 +24,7 @@ class UnetPipeline(DiffusionPipeline):
         height = config["height"]
         width = config["width"]
         latent_scale = config["latent_scale"]
+        blend_ratio = config["blend_ratio"]
         
         self.scheduler.set_timesteps(timesteps)
         scheduler_1 = UniPCMultistepScheduler().from_config(self.scheduler.config)
@@ -58,6 +59,7 @@ class UnetPipeline(DiffusionPipeline):
             config=config,
             encoder_hidden_states=prompt_1_embeddings,
             decoder_hidden_states=prompt_2_embeddings,
+            blend_ratio=blend_ratio,
             generator=generator,
             base_latent=base_latent
         )
@@ -65,7 +67,7 @@ class UnetPipeline(DiffusionPipeline):
         return prompt_1_latents, prompt_2_latents, blend_latents
         
         
-    def reverse(self, config, encoder_hidden_states, decoder_hidden_states, generator=None, base_latent=None):
+    def reverse(self, config, encoder_hidden_states, decoder_hidden_states, blend_ratio, generator=None, base_latent=None):
         latents = []
         
         if config["same_base_latent"] == True and base_latent is not None:
@@ -88,7 +90,8 @@ class UnetPipeline(DiffusionPipeline):
                     latent_model_input,
                     t,
                     encoder_hidden_states=encoder_hidden_states,
-                    decoder_hidden_states=decoder_hidden_states
+                    decoder_hidden_states=decoder_hidden_states,
+                    blend_ratio=blend_ratio
                 ).sample
 
             # Perform guidance

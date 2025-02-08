@@ -13,6 +13,6 @@
     "from_timestep": 10, 
     "to_timestep": 25,
     "latent_scale": 8,
-    "TEXTUAL_scale": 0.5,
+    "blend_ratio": 0.5,
     "same_base_latent": true
 }

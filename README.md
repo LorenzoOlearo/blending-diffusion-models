@@ -71,7 +71,7 @@ The configuration file (`config.json`) should follow the sample below:
     "guidance_scale": 7.5,
     "from_timestep": 8, 
     "to_timestep": 25,
-    "TEXTUAL_scale": 0.5, 
+    "blend_ratio": 0.5, 
     "same_base_latent": true
 }
 ```
@@ -89,7 +89,7 @@ The configuration file (`config.json`) should follow the sample below:
 - `guidance_scale`: Guidance scale for the diffusion model.
 - `from_timestep`: Exclusive to the `SWITCH` method, controls the timestep at which the __switch__ is performed.
 - `to_timestep`: Exclusive to the `SWITCH` method, controls the timestep at which the synthesis of the image is completed.
-- `TEXTUAL_scale`: Exclusive to the `TEXTUAL` method, controls the ratio of the blending between the two prompts.
+- `TEXTUAL_scale`: The ratio of the first prompt to the second prompt in the blended image.
 - `same_base_latent`: Whether to use the same base latent for all blending methods.
 
 

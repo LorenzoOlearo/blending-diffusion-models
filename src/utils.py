@@ -49,14 +49,14 @@ def get_additional_parameters(config, blend_method):
     elif blend_method == "UNET":
         pass
     elif blend_method == "TEXTUAL":
-        interpolation_scale = config["TEXTUAL_scale"]
-        interpolation_scale = str(interpolation_scale).replace(".", "-")
-        additional_parameters_string = f"scale_{interpolation_scale}"
+        blend_ratio = config["blend_ratio"]
+        blend_ratio = str(blend_ratio).replace(".", "-")
+        additional_parameters_string = f"scale_{blend_ratio}"
     elif blend_method == "ALTERNATE":
         pass
     else: 
         raise ValueError(f"Method {blend_method} not recognized.")
-    
+   
     return additional_parameters_string
 
 

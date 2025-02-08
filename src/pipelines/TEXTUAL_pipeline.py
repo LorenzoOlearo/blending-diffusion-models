@@ -25,7 +25,7 @@ class TextualPipeline(DiffusionPipeline):
         height = config["height"]
         width = config["width"]
         latent_scale = config["latent_scale"]
-        interpolation_scale = config["TEXTUAL_scale"]
+        blend_ratio = config["blend_ratio"]
         
         self.scheduler.set_timesteps(timesteps)
         scheduler_1 = UniPCMultistepScheduler().from_config(self.scheduler.config)
@@ -34,7 +34,7 @@ class TextualPipeline(DiffusionPipeline):
         
         prompt_1_embeddings = self.create_text_embeddings(prompt_1)
         prompt_2_embeddings = self.create_text_embeddings(prompt_2)
-        blended_prompts = ((1 - interpolation_scale) * prompt_1_embeddings) + (interpolation_scale * prompt_2_embeddings)
+        blended_prompts = ((1 - blend_ratio) * prompt_1_embeddings) + (blend_ratio * prompt_2_embeddings)
         
         pipeline_1 = SingleDiffusionPipeline(
             vae=self.vae,

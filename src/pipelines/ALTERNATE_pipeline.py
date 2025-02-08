@@ -24,6 +24,7 @@ class AlternatePipeline(DiffusionPipeline):
         self.scheduler.set_timesteps(timesteps)
         scheduler_1 = UniPCMultistepScheduler().from_config(self.scheduler.config)
         scheduler_2 = UniPCMultistepScheduler().from_config(self.scheduler.config)
+        blend_ratio = config["blend_ratio"]
         
         pipeline_1 = SingleDiffusionPipeline(
             vae=self.vae,
@@ -55,6 +56,7 @@ class AlternatePipeline(DiffusionPipeline):
             config=config,
             prompt_1_embeddings=prompt_1_embeddings,
             prompt_2_embeddings=prompt_2_embeddings,
+            blend_ratio=blend_ratio,
             generator=generator,
             base_latent=base_latent
         )
@@ -62,7 +64,7 @@ class AlternatePipeline(DiffusionPipeline):
         return prompt_1_latents, prompt_2_latents, blend_latents
         
         
-    def reverse(self, config, prompt_1_embeddings, prompt_2_embeddings, generator=None, base_latent=None):
+    def reverse(self, config, prompt_1_embeddings, prompt_2_embeddings, blend_ratio, generator=None, base_latent=None):
         latents = []
         
         if config["same_base_latent"] == True and base_latent is not None:
@@ -83,7 +85,7 @@ class AlternatePipeline(DiffusionPipeline):
 
             latent_model_input = self.scheduler.scale_model_input(latent_model_input, timestep=t)
                 
-            prompt_embedding = prompt_1_embeddings if index % 2 == 0 else prompt_2_embeddings
+            prompt_embedding = prompt_1_embeddings if index % (1 / blend_ratio) == 0 else prompt_2_embeddings
             
             with torch.no_grad():
                 noise_pred = self.unet(
